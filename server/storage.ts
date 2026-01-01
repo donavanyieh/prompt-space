@@ -31,6 +31,7 @@ export class MemStorage implements IStorage {
   private seedData() {
     const samplePrompts: InsertPrompt[] = [
       {
+        title: "Code Review Assistant",
         prompt: `You are a senior software engineer. Review the following code and provide:
 1. A brief summary of what the code does
 2. Any potential bugs or issues
@@ -45,6 +46,7 @@ Code to review:
         authorName: "Alex Chen",
       },
       {
+        title: "Customer Complaint Response",
         prompt: `Write a professional email responding to a customer complaint about [specific issue]. 
 
 Requirements:
@@ -62,6 +64,7 @@ Tone: Professional but empathetic`,
         authorName: "Sarah Johnson",
       },
       {
+        title: "Product Description Generator",
         prompt: `Create a compelling product description for [product name].
 
 Product details:
@@ -82,6 +85,7 @@ The description should be:
         authorName: "Michael Brown",
       },
       {
+        title: "Data Analysis Report",
         prompt: `Analyze the following data and provide insights:
 
 Data: [paste data or describe dataset]
@@ -100,6 +104,7 @@ Format the response with clear sections and bullet points.`,
         authorName: "Emily Davis",
       },
       {
+        title: "Document Summarizer",
         prompt: `Summarize the following document in [X] sentences/bullet points:
 
 Document: [paste content]

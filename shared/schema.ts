@@ -40,6 +40,7 @@ export const users = pgTable("users", {
 
 export const prompts = pgTable("prompts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
   prompt: text("prompt").notNull(),
   domain: text("domain").notNull(),
   task: text("task").notNull(),

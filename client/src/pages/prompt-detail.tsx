@@ -269,7 +269,7 @@ export default function PromptDetail() {
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <CardTitle className="text-xl">Prompt</CardTitle>
+                  <CardTitle className="text-xl">{prompt.title}</CardTitle>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="secondary">{prompt.domain}</Badge>
                     <Badge variant="outline">{prompt.task}</Badge>

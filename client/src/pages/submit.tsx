@@ -31,6 +31,7 @@ import { Send, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
 const formSchema = insertPromptSchema.extend({
+  title: z.string().min(3, "Title must be at least 3 characters"),
   prompt: z.string().min(10, "Prompt must be at least 10 characters"),
   authorName: z.string().min(2, "Name must be at least 2 characters"),
   domain: z.string().min(1, "Please select a domain"),
@@ -47,6 +48,7 @@ export default function Submit() {
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      title: "",
       prompt: "",
       domain: "",
       task: "",
@@ -103,6 +105,27 @@ export default function Submit() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Give your prompt a descriptive title"
+                          {...field}
+                          data-testid="input-title"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        A short, memorable name for your prompt
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="prompt"

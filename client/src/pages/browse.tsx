@@ -22,7 +22,7 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
       <Card className="hover-elevate cursor-pointer h-full flex flex-col" data-testid={`card-prompt-${prompt.id}`}>
         <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
           <h3 className="font-semibold text-base line-clamp-2 flex-1">
-            {prompt.prompt.slice(0, 80)}{prompt.prompt.length > 80 ? "..." : ""}
+            {prompt.title}
           </h3>
           <Badge variant="secondary" className="shrink-0">
             {prompt.domain}
