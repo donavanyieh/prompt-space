@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -8,13 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, MessageSquare, Calendar, User, Filter, X, ChevronDown, ChevronUp } from "lucide-react";
-import { type Prompt, DOMAINS, TASKS } from "@shared/schema";
+import { Search, MessageSquare, Calendar, User, Filter, X, ChevronDown, ChevronUp, Users } from "lucide-react";
+import { type Prompt, DOMAINS, TASKS, type Team } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 function PromptCard({ prompt }: { prompt: Prompt }) {
   const commentCountQuery = useQuery<number>({
-    queryKey: [`/api/prompts/${prompt.id}/comments/count`],
+    queryKey: ["/api/prompts", prompt.id, "comments", "count"],
   });
 
   return (
@@ -75,10 +77,32 @@ function PromptCardSkeleton() {
 }
 
 export default function Browse() {
+  const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+
+  const { data: teams, isLoading: teamsLoading } = useQuery<Team[]>({
+    queryKey: ["/api/teams/my"],
+    enabled: isAuthenticated,
+  });
+
+  const hasTeam = teams && teams.length > 0;
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to browse prompts.",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [authLoading, isAuthenticated, toast]);
 
   const queryParams = new URLSearchParams();
   if (searchQuery) queryParams.set("search", searchQuery);
@@ -90,6 +114,7 @@ export default function Browse() {
 
   const { data: prompts, isLoading } = useQuery<Prompt[]>({
     queryKey: [apiUrl],
+    enabled: isAuthenticated && hasTeam,
   });
 
   const toggleDomain = (domain: string) => {
@@ -116,19 +141,52 @@ export default function Browse() {
 
   const hasActiveFilters = selectedDomains.length > 0 || selectedTasks.length > 0 || searchQuery;
 
+  if (authLoading || teamsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  if (!hasTeam) {
+    return (
+      <div className="min-h-screen py-8 px-4">
+        <div className="max-w-lg mx-auto text-center">
+          <Card className="p-8">
+            <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Join a Team First</h2>
+            <p className="text-muted-foreground mb-6">
+              You need to be part of a team to browse prompts. Create or join a team to get started.
+            </p>
+            <Link href="/team">
+              <Button data-testid="button-setup-team">
+                Set Up Your Team
+              </Button>
+            </Link>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Browse Prompts</h1>
           <p className="text-muted-foreground">
-            Discover and explore prompts shared by your organization
+            Discover and explore prompts shared by your team
           </p>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
           <aside className="lg:w-64 shrink-0">
-            <div className="sticky top-4 space-y-4">
+            <div className="sticky top-20 space-y-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input

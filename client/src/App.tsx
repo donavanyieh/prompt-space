@@ -8,6 +8,7 @@ import Home from "@/pages/home";
 import Browse from "@/pages/browse";
 import Submit from "@/pages/submit";
 import PromptDetail from "@/pages/prompt-detail";
+import TeamPage from "@/pages/team";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -17,6 +18,7 @@ function Router() {
       <Route path="/browse" component={Browse} />
       <Route path="/submit" component={Submit} />
       <Route path="/prompt/:id" component={PromptDetail} />
+      <Route path="/team" component={TeamPage} />
       <Route component={NotFound} />
     </Switch>
   );

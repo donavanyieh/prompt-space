@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -8,10 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Form,
   FormControl,
@@ -20,8 +19,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { type Prompt, type Comment, insertCommentSchema } from "@shared/schema";
+import { isUnauthorizedError } from "@/lib/auth-utils";
+import { type Prompt, type Comment } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { 
   ArrowLeft, 
@@ -36,9 +37,8 @@ import {
   FileText
 } from "lucide-react";
 
-const commentFormSchema = insertCommentSchema.omit({ promptId: true }).extend({
+const commentFormSchema = z.object({
   content: z.string().min(1, "Comment cannot be empty"),
-  authorName: z.string().min(2, "Name must be at least 2 characters"),
 });
 
 type CommentFormValues = z.infer<typeof commentFormSchema>;
@@ -71,16 +71,17 @@ function CommentItem({ comment }: { comment: Comment }) {
 
 function CommentSection({ promptId }: { promptId: string }) {
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
 
   const { data: comments, isLoading } = useQuery<Comment[]>({
-    queryKey: [`/api/prompts/${promptId}/comments`],
+    queryKey: ["/api/prompts", promptId, "comments"],
+    enabled: isAuthenticated,
   });
 
   const form = useForm<CommentFormValues>({
     resolver: zodResolver(commentFormSchema),
     defaultValues: {
       content: "",
-      authorName: "",
     },
   });
 
@@ -90,8 +91,8 @@ function CommentSection({ promptId }: { promptId: string }) {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/prompts/${promptId}/comments`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/prompts/${promptId}/comments/count`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts", promptId, "comments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts", promptId, "comments", "count"] });
       form.reset();
       toast({
         title: "Comment added",
@@ -99,6 +100,11 @@ function CommentSection({ promptId }: { promptId: string }) {
       });
     },
     onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Session expired", description: "Please log in again.", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        return;
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to add comment",
@@ -118,56 +124,52 @@ function CommentSection({ promptId }: { promptId: string }) {
         Comments ({comments?.length || 0})
       </h3>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-          <FormField
-            control={form.control}
-            name="authorName"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Input
-                    placeholder="Your name"
-                    {...field}
-                    data-testid="input-comment-author"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="content"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Textarea
-                    placeholder="Add a comment..."
-                    className="min-h-[80px]"
-                    {...field}
-                    data-testid="input-comment-content"
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button
-            type="submit"
-            size="sm"
-            disabled={mutation.isPending}
-            data-testid="button-submit-comment"
-          >
-            {mutation.isPending ? "Posting..." : (
-              <>
-                <Send className="w-3 h-3 mr-1" />
-                Post Comment
-              </>
-            )}
-          </Button>
-        </form>
-      </Form>
+      {isAuthenticated && (
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+            <div className="flex gap-3">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={user?.profileImageUrl || undefined} />
+                <AvatarFallback className="text-xs">
+                  {user?.firstName?.[0] || user?.email?.[0] || "?"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 space-y-3">
+                <FormField
+                  control={form.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Add a comment..."
+                          className="min-h-[80px]"
+                          {...field}
+                          data-testid="input-comment-content"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={mutation.isPending}
+                  data-testid="button-submit-comment"
+                >
+                  {mutation.isPending ? "Posting..." : (
+                    <>
+                      <Send className="w-3 h-3 mr-1" />
+                      Post Comment
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </form>
+        </Form>
+      )}
 
       <Separator />
 
@@ -202,10 +204,25 @@ export default function PromptDetail() {
   const [, params] = useRoute("/prompt/:id");
   const promptId = params?.id;
   const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to view prompts.",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [authLoading, isAuthenticated, toast]);
 
   const { data: prompt, isLoading } = useQuery<Prompt>({
-    queryKey: [`/api/prompts/${promptId}`],
-    enabled: !!promptId,
+    queryKey: ["/api/prompts", promptId],
+    enabled: !!promptId && isAuthenticated,
   });
 
   const copyToClipboard = async () => {
@@ -215,6 +232,18 @@ export default function PromptDetail() {
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   if (isLoading) {
     return (

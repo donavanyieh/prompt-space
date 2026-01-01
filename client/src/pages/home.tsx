@@ -2,9 +2,21 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Share2, MessageSquare, Sparkles, ArrowRight, Code2 } from "lucide-react";
+import { Search, Share2, MessageSquare, Sparkles, ArrowRight, Code2, LogIn, Users } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
+import type { Team } from "@shared/schema";
 
 export default function Home() {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  const { data: teams } = useQuery<Team[]>({
+    queryKey: ["/api/teams/my"],
+    enabled: isAuthenticated,
+  });
+
+  const hasTeam = teams && teams.length > 0;
+
   return (
     <div className="min-h-screen">
       <section className="py-20 px-4">
@@ -25,17 +37,39 @@ export default function Home() {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/submit">
-              <Button size="lg" data-testid="button-submit-prompt-hero">
-                Submit a Prompt
-                <ArrowRight className="w-4 h-4 ml-2" />
+            {isLoading ? null : isAuthenticated ? (
+              hasTeam ? (
+                <>
+                  <Link href="/submit">
+                    <Button size="lg" data-testid="button-submit-prompt-hero">
+                      Submit a Prompt
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </Link>
+                  <Link href="/browse">
+                    <Button size="lg" variant="outline" data-testid="button-browse-library-hero">
+                      Browse Library
+                    </Button>
+                  </Link>
+                </>
+              ) : (
+                <Link href="/team">
+                  <Button size="lg" data-testid="button-setup-team-hero">
+                    <Users className="w-4 h-4 mr-2" />
+                    Set Up Your Team
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </Link>
+              )
+            ) : (
+              <Button size="lg" asChild data-testid="button-login-hero">
+                <a href="/api/login">
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Log In to Get Started
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </a>
               </Button>
-            </Link>
-            <Link href="/browse">
-              <Button size="lg" variant="outline" data-testid="button-browse-library-hero">
-                Browse Library
-              </Button>
-            </Link>
+            )}
           </div>
         </div>
       </section>
@@ -52,6 +86,18 @@ export default function Home() {
           </div>
           
           <div className="grid md:grid-cols-3 gap-6">
+            <Card className="hover-elevate">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Users className="w-6 h-6 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Create or Join a Team</h3>
+                <p className="text-muted-foreground text-sm">
+                  Set up your team and share a join code with colleagues to collaborate.
+                </p>
+              </CardContent>
+            </Card>
+
             <Card className="hover-elevate">
               <CardContent className="pt-6">
                 <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
@@ -75,18 +121,6 @@ export default function Home() {
                 </p>
               </CardContent>
             </Card>
-            
-            <Card className="hover-elevate">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <MessageSquare className="w-6 h-6 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Collaborate</h3>
-                <p className="text-muted-foreground text-sm">
-                  Leave comments and feedback to improve prompts together as a team.
-                </p>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </section>
@@ -105,12 +139,30 @@ export default function Home() {
             Join teams who have consolidated their AI knowledge into a single, searchable repository.
           </p>
           
-          <Link href="/submit">
-            <Button size="lg" data-testid="button-get-started">
-              Get Started
-              <ArrowRight className="w-4 h-4 ml-2" />
+          {isLoading ? null : isAuthenticated ? (
+            hasTeam ? (
+              <Link href="/browse">
+                <Button size="lg" data-testid="button-get-started">
+                  Browse Prompts
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/team">
+                <Button size="lg" data-testid="button-get-started">
+                  Get Started
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </Link>
+            )
+          ) : (
+            <Button size="lg" asChild data-testid="button-get-started">
+              <a href="/api/login">
+                Get Started
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </a>
             </Button>
-          </Link>
+          )}
         </div>
       </section>
     </div>

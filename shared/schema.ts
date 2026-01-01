@@ -1,7 +1,10 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { relations } from "drizzle-orm";
+
+export * from "./models/auth";
 
 export const DOMAINS = [
   "Engineering",
@@ -32,10 +35,19 @@ export const TASKS = [
 export type Domain = (typeof DOMAINS)[number];
 export type Task = (typeof TASKS)[number];
 
-export const users = pgTable("users", {
+export const teams = pgTable("teams", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  name: text("name").notNull(),
+  joinCode: varchar("join_code", { length: 8 }).notNull().unique(),
+  leaderId: varchar("leader_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const teamMembers = pgTable("team_members", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  teamId: varchar("team_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
 });
 
 export const prompts = pgTable("prompts", {
@@ -45,7 +57,9 @@ export const prompts = pgTable("prompts", {
   domain: text("domain").notNull(),
   task: text("task").notNull(),
   notes: text("notes"),
+  authorId: varchar("author_id").notNull(),
   authorName: text("author_name").notNull(),
+  teamId: varchar("team_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -53,13 +67,47 @@ export const comments = pgTable("comments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   promptId: varchar("prompt_id").notNull(),
   content: text("content").notNull(),
+  authorId: varchar("author_id").notNull(),
   authorName: text("author_name").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const teamsRelations = relations(teams, ({ many }) => ({
+  members: many(teamMembers),
+  prompts: many(prompts),
+}));
+
+export const teamMembersRelations = relations(teamMembers, ({ one }) => ({
+  team: one(teams, {
+    fields: [teamMembers.teamId],
+    references: [teams.id],
+  }),
+}));
+
+export const promptsRelations = relations(prompts, ({ one, many }) => ({
+  team: one(teams, {
+    fields: [prompts.teamId],
+    references: [teams.id],
+  }),
+  comments: many(comments),
+}));
+
+export const commentsRelations = relations(comments, ({ one }) => ({
+  prompt: one(prompts, {
+    fields: [comments.promptId],
+    references: [prompts.id],
+  }),
+}));
+
+export const insertTeamSchema = createInsertSchema(teams).omit({
+  id: true,
+  createdAt: true,
+  joinCode: true,
+});
+
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({
+  id: true,
+  joinedAt: true,
 });
 
 export const insertPromptSchema = createInsertSchema(prompts).omit({
@@ -72,8 +120,11 @@ export const insertCommentSchema = createInsertSchema(comments).omit({
   createdAt: true,
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
+export type Team = typeof teams.$inferSelect;
+
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
+export type TeamMember = typeof teamMembers.$inferSelect;
 
 export type InsertPrompt = z.infer<typeof insertPromptSchema>;
 export type Prompt = typeof prompts.$inferSelect;

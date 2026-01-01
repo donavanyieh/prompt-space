@@ -1,13 +1,13 @@
-import { useLocation } from "wouter";
+import { useEffect } from "react";
+import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -25,17 +25,19 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { DOMAINS, TASKS, insertPromptSchema } from "@shared/schema";
-import { Send, Eye, EyeOff } from "lucide-react";
+import { isUnauthorizedError } from "@/lib/auth-utils";
+import { DOMAINS, TASKS, type Team } from "@shared/schema";
+import { Send, Eye, EyeOff, Users } from "lucide-react";
 import { useState } from "react";
 
-const formSchema = insertPromptSchema.extend({
+const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   prompt: z.string().min(10, "Prompt must be at least 10 characters"),
-  authorName: z.string().min(2, "Name must be at least 2 characters"),
   domain: z.string().min(1, "Please select a domain"),
   task: z.string().min(1, "Please select a task"),
+  notes: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -43,7 +45,28 @@ type FormValues = z.infer<typeof formSchema>;
 export default function Submit() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [showPreview, setShowPreview] = useState(false);
+
+  const { data: teams, isLoading: teamsLoading } = useQuery<Team[]>({
+    queryKey: ["/api/teams/my"],
+    enabled: isAuthenticated,
+  });
+
+  const hasTeam = teams && teams.length > 0;
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Please log in",
+        description: "You need to be logged in to submit prompts.",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+    }
+  }, [authLoading, isAuthenticated, toast]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -53,7 +76,6 @@ export default function Submit() {
       domain: "",
       task: "",
       notes: "",
-      authorName: "",
     },
   });
 
@@ -71,6 +93,11 @@ export default function Submit() {
       navigate(`/prompt/${data.id}`);
     },
     onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Session expired", description: "Please log in again.", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        return;
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to submit prompt",
@@ -84,6 +111,39 @@ export default function Submit() {
   };
 
   const watchedPrompt = form.watch("prompt");
+
+  if (authLoading || teamsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  if (!hasTeam) {
+    return (
+      <div className="min-h-screen py-8 px-4">
+        <div className="max-w-lg mx-auto text-center">
+          <Card className="p-8">
+            <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Join a Team First</h2>
+            <p className="text-muted-foreground mb-6">
+              You need to be part of a team to submit prompts. Create or join a team to get started.
+            </p>
+            <Link href="/team">
+              <Button data-testid="button-setup-team">
+                Set Up Your Team
+              </Button>
+            </Link>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-8 px-4">
@@ -250,27 +310,6 @@ export default function Submit() {
                       </FormControl>
                       <FormDescription>
                         Include usage tips, examples, or context
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="authorName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Your Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter your name"
-                          {...field}
-                          data-testid="input-author-name"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        How should we credit this prompt?
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
