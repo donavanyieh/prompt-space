@@ -27,20 +27,27 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-5xl mx-auto text-center">
-          <Badge variant="secondary" className="mb-6">
+      {/* Hero Section with Gradient Background */}
+      <section className="relative py-24 px-4 overflow-hidden gradient-hero">
+        {/* Decorative blurred blobs */}
+        <div className="blob blob-primary w-96 h-96 -top-20 -left-20" />
+        <div className="blob blob-accent w-80 h-80 top-40 -right-16" />
+        <div className="blob blob-primary w-64 h-64 bottom-10 left-1/4" />
+        
+        <div className="relative max-w-5xl mx-auto text-center z-10">
+          <Badge className="mb-6 glass border-white/20 text-white/90">
             <Sparkles className="w-3 h-3 mr-1" />
             Enterprise Prompt Management
           </Badge>
           
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-white">
             Centralize Your Team's
-            <span className="text-primary block mt-2">AI Prompts</span>
+            <span className="block mt-2 bg-gradient-to-r from-cyan-300 to-blue-200 bg-clip-text text-transparent">
+              AI Prompts
+            </span>
           </h1>
           
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
+          <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto mb-10">
             Stop reinventing the wheel. Share, discover, and collaborate on prompts 
             across your organization. Build a knowledge base that scales with your team.
           </p>
@@ -51,20 +58,20 @@ export default function Home() {
               hasTeam ? (
                 <>
                   <Link href="/submit">
-                    <Button size="lg" data-testid="button-submit-prompt-hero">
+                    <Button size="lg" className="glow-button" data-testid="button-submit-prompt-hero">
                       Submit a Prompt
                       <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   </Link>
                   <Link href="/browse">
-                    <Button size="lg" variant="outline" data-testid="button-browse-library-hero">
+                    <Button size="lg" variant="outline" className="border-white/30 text-white bg-white/10 backdrop-blur-sm" data-testid="button-browse-library-hero">
                       Browse Library
                     </Button>
                   </Link>
                 </>
               ) : (
                 <Link href="/team">
-                  <Button size="lg" data-testid="button-setup-team-hero">
+                  <Button size="lg" className="glow-button" data-testid="button-setup-team-hero">
                     <Users className="w-4 h-4 mr-2" />
                     Set Up Your Team
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -72,7 +79,7 @@ export default function Home() {
                 </Link>
               )
             ) : (
-              <Button size="lg" asChild data-testid="button-login-hero">
+              <Button size="lg" className="glow-button" asChild data-testid="button-login-hero">
                 <a href="/api/login">
                   <LogIn className="w-4 h-4 mr-2" />
                   Log In to Get Started
@@ -85,10 +92,10 @@ export default function Home() {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-16 px-4 bg-muted/30">
+      <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-semibold mb-4">
+          <div className="text-center mb-14">
+            <h2 className="text-2xl md:text-3xl font-semibold mb-4 tracking-tight">
               How Prompt Party Works
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
@@ -96,38 +103,38 @@ export default function Home() {
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="hover-elevate">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Users className="w-6 h-6 text-primary" />
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="card-lift accent-glow">
+              <CardContent className="pt-8 pb-8">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-5">
+                  <Users className="w-7 h-7 text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Create or Join a Team</h3>
-                <p className="text-muted-foreground text-sm">
+                <h3 className="text-lg font-semibold mb-3">Create or Join a Team</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
                   Set up your team and share a join code with colleagues to collaborate.
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="hover-elevate">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Code2 className="w-6 h-6 text-primary" />
+            <Card className="card-lift accent-glow">
+              <CardContent className="pt-8 pb-8">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-5">
+                  <Code2 className="w-7 h-7 text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Submit Prompts</h3>
-                <p className="text-muted-foreground text-sm">
+                <h3 className="text-lg font-semibold mb-3">Submit Prompts</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
                   Share your best prompts with domain and task categorization for easy discovery.
                 </p>
               </CardContent>
             </Card>
             
-            <Card className="hover-elevate">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Search className="w-6 h-6 text-primary" />
+            <Card className="card-lift accent-glow">
+              <CardContent className="pt-8 pb-8">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-5">
+                  <Search className="w-7 h-7 text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold mb-2">Search & Filter</h3>
-                <p className="text-muted-foreground text-sm">
+                <h3 className="text-lg font-semibold mb-3">Search & Filter</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
                   Find the perfect prompt by searching across domains and task types.
                 </p>
               </CardContent>
@@ -137,38 +144,38 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 px-4">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="relative py-20 px-4 overflow-hidden bg-muted/30">
+        <div className="max-w-4xl mx-auto text-center relative z-10">
           <div className="inline-flex items-center gap-2 mb-6">
             <Share2 className="w-5 h-5 text-primary" />
-            <span className="text-sm font-medium text-muted-foreground">KNOWLEDGE SHARING</span>
+            <span className="text-sm font-medium uppercase tracking-wider text-muted-foreground">Knowledge Sharing</span>
           </div>
           
-          <h2 className="text-2xl md:text-3xl font-semibold mb-4">
+          <h2 className="text-2xl md:text-3xl font-semibold mb-4 tracking-tight">
             Ready to streamline your prompt library?
           </h2>
-          <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
+          <p className="text-muted-foreground mb-10 max-w-lg mx-auto">
             Join teams who have consolidated their AI knowledge into a single, searchable repository.
           </p>
           
           {isLoading ? null : isAuthenticated ? (
             hasTeam ? (
               <Link href="/browse">
-                <Button size="lg" data-testid="button-get-started">
+                <Button size="lg" className="glow-button" data-testid="button-get-started">
                   Browse Prompts
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
             ) : (
               <Link href="/team">
-                <Button size="lg" data-testid="button-get-started">
+                <Button size="lg" className="glow-button" data-testid="button-get-started">
                   Get Started
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
             )
           ) : (
-            <Button size="lg" asChild data-testid="button-get-started">
+            <Button size="lg" className="glow-button" asChild data-testid="button-get-started">
               <a href="/api/login">
                 Get Started
                 <ArrowRight className="w-4 h-4 ml-2" />
