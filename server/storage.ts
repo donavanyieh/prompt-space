@@ -35,7 +35,6 @@ export interface IStorage {
   removeTeamMember(teamId: string, userId: string): Promise<void>;
   removeTeamMemberWithCascade(teamId: string, userId: string): Promise<void>;
   isUserInTeam(userId: string, teamId: string): Promise<boolean>;
-  getUserTeamId(userId: string): Promise<string | null>;
   
   // Prompt operations
   getPrompts(teamId: string, options?: { search?: string; domains?: string[]; tasks?: string[]; sort?: 'newest' | 'comments' | 'votes' }): Promise<Prompt[]>;
@@ -103,6 +102,10 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(teams).where(inArray(teams.id, teamIds));
   }
 
+  /**
+   * Deletes a team and all associated data.
+   * Cascade order: comments/votes on prompts → prompts → memberships → team
+   */
   async deleteTeamWithCascade(teamId: string): Promise<void> {
     // Get all prompts in this team
     const teamPrompts = await db.select({ id: prompts.id })
@@ -156,6 +159,10 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)));
   }
 
+  /**
+   * Removes a team member and deletes all their contributions to the team.
+   * Deletes: user's prompts (and their comments/votes), user's comments on other prompts, user's votes.
+   */
   async removeTeamMemberWithCascade(teamId: string, userId: string): Promise<void> {
     // Get all prompts by this user in this team
     const userPrompts = await db.select({ id: prompts.id })
@@ -206,15 +213,16 @@ export class DatabaseStorage implements IStorage {
     return !!member;
   }
 
-  async getUserTeamId(userId: string): Promise<string | null> {
-    const [membership] = await db.select().from(teamMembers).where(eq(teamMembers.userId, userId));
-    return membership?.teamId || null;
-  }
-
   // ============================================
   // Prompt Operations
   // ============================================
 
+  /**
+   * Retrieves prompts for a team with optional filtering and sorting.
+   * Note: Filtering is done in-memory after fetching from the database.
+   * This approach is intentional for flexibility with complex filter combinations,
+   * but may need optimization if prompt counts grow significantly large.
+   */
   async getPrompts(teamId: string, options?: { search?: string; domains?: string[]; tasks?: string[]; sort?: 'newest' | 'comments' | 'votes' }): Promise<Prompt[]> {
     const results = await db.select()
       .from(prompts)
@@ -296,6 +304,11 @@ export class DatabaseStorage implements IStorage {
     return prompt;
   }
 
+  /**
+   * Retrieves all prompts authored by a user, filtered to only include
+   * prompts from teams they are currently a member of.
+   * Security: Prevents data leakage to ex-team members.
+   */
   async getUserPrompts(userId: string): Promise<Prompt[]> {
     // Get all prompts authored by this user
     const userPrompts = await db.select()
@@ -318,6 +331,11 @@ export class DatabaseStorage implements IStorage {
     return userPrompts.filter(p => userTeamIds.has(p.teamId));
   }
 
+  /**
+   * Retrieves all prompts a user has upvoted, filtered to only include
+   * prompts from teams they are currently a member of.
+   * Security: Prevents data leakage to ex-team members.
+   */
   async getUserLikedPrompts(userId: string): Promise<Prompt[]> {
     // Get all prompt IDs the user has upvoted (value = 1)
     const userUpvotes = await db.select({ promptId: votes.promptId })
