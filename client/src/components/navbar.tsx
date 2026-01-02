@@ -1,3 +1,10 @@
+/**
+ * Navigation Bar Component
+ * 
+ * Main navigation header with branding, navigation links, team switcher,
+ * user menu, and responsive mobile menu. Adapts based on auth state.
+ */
+
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,12 +22,17 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
 import { useTeam } from "@/contexts/team-context";
 
+// Navigation items shown when authenticated
 const navItems = [
   { label: "Home", href: "/" },
   { label: "Browse Prompts", href: "/browse" },
   { label: "Submit Prompt", href: "/submit" },
 ];
 
+/**
+ * Team switcher dropdown for users with multiple teams.
+ * Shows "Join Team" button if user has no teams.
+ */
 function TeamSwitcher() {
   const { teams, activeTeam, setActiveTeam, hasTeams } = useTeam();
 
@@ -68,6 +80,7 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, isAuthenticated, isLoading, logout } = useAuth();
 
+  // Generate user initials for avatar fallback
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
       return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
@@ -82,6 +95,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex h-14 items-center justify-between gap-4">
+          {/* Left Section: Logo + Team Switcher */}
           <div className="flex items-center gap-4">
             <Link href="/">
               <div className="flex items-center gap-2 font-semibold" data-testid="link-home-logo">
@@ -99,6 +113,7 @@ export function Navbar() {
             )}
           </div>
 
+          {/* Center Section: Navigation Links (Desktop) */}
           {isAuthenticated && (
             <nav className="hidden md:flex items-center gap-1">
               {navItems.map((item) => (
@@ -115,6 +130,7 @@ export function Navbar() {
             </nav>
           )}
 
+          {/* Right Section: Theme Toggle + User Menu + Mobile Menu Toggle */}
           <div className="flex items-center gap-2">
             <ThemeToggle />
             
@@ -162,6 +178,7 @@ export function Navbar() {
               </Button>
             )}
 
+            {/* Mobile Menu Toggle */}
             <Button
               variant="ghost"
               size="icon"
@@ -178,6 +195,7 @@ export function Navbar() {
           </div>
         </div>
 
+        {/* Mobile Navigation Menu */}
         {mobileMenuOpen && isAuthenticated && (
           <nav className="md:hidden py-4 border-t">
             <div className="flex flex-col gap-1">
