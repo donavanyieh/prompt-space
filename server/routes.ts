@@ -188,6 +188,18 @@ export async function registerRoutes(
     }
   });
 
+  // Get all prompts submitted by the current user (must be before :id route)
+  app.get("/api/prompts/mine", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const prompts = await storage.getUserPrompts(userId);
+      res.json(prompts);
+    } catch (error) {
+      console.error("Error fetching user prompts:", error);
+      res.status(500).json({ message: "Failed to fetch your prompts" });
+    }
+  });
+
   // Get a single prompt by ID (requires team membership)
   app.get("/api/prompts/:id", isAuthenticated, async (req: any, res) => {
     try {
@@ -245,18 +257,6 @@ export async function registerRoutes(
       }
       console.error("Error creating prompt:", error);
       res.status(500).json({ message: "Failed to create prompt" });
-    }
-  });
-
-  // Get all prompts submitted by the current user
-  app.get("/api/prompts/mine", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const prompts = await storage.getUserPrompts(userId);
-      res.json(prompts);
-    } catch (error) {
-      console.error("Error fetching user prompts:", error);
-      res.status(500).json({ message: "Failed to fetch your prompts" });
     }
   });
 
