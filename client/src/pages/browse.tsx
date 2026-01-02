@@ -15,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, MessageSquare, Calendar, User, Filter, X, ChevronDown, ChevronUp, Users, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Search, MessageSquare, Calendar, User, Filter, X, ChevronDown, ChevronUp, Users, ThumbsUp, ThumbsDown, ArrowUpDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { type Prompt, DOMAINS, TASKS } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
@@ -155,6 +156,7 @@ export default function Browse() {
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [sortBy, setSortBy] = useState<"newest" | "comments" | "votes">("newest");
 
   // Redirect unauthenticated users
   useEffect(() => {
@@ -176,12 +178,13 @@ export default function Browse() {
   if (searchQuery) queryParams.set("search", searchQuery);
   if (selectedDomains.length > 0) queryParams.set("domains", selectedDomains.join(","));
   if (selectedTasks.length > 0) queryParams.set("tasks", selectedTasks.join(","));
+  if (sortBy !== "newest") queryParams.set("sort", sortBy);
   
   const queryString = queryParams.toString();
   const apiUrl = queryString ? `/api/prompts?${queryString}` : "/api/prompts";
 
   const { data: prompts, isLoading } = useQuery<Prompt[]>({
-    queryKey: ["/api/prompts", activeTeam?.id, searchQuery, selectedDomains.join(","), selectedTasks.join(",")],
+    queryKey: ["/api/prompts", activeTeam?.id, searchQuery, selectedDomains.join(","), selectedTasks.join(","), sortBy],
     queryFn: async () => {
       if (!activeTeam) return [];
       const response = await fetch(apiUrl, { credentials: "include" });
@@ -212,9 +215,10 @@ export default function Browse() {
     setSelectedDomains([]);
     setSelectedTasks([]);
     setSearchQuery("");
+    setSortBy("newest");
   };
 
-  const hasActiveFilters = selectedDomains.length > 0 || selectedTasks.length > 0 || searchQuery;
+  const hasActiveFilters = selectedDomains.length > 0 || selectedTasks.length > 0 || searchQuery || sortBy !== "newest";
 
   // Loading state
   if (authLoading || teamsLoading) {
@@ -277,6 +281,24 @@ export default function Browse() {
                   className="pl-9"
                   data-testid="input-search"
                 />
+              </div>
+
+              {/* Sort Dropdown */}
+              <div>
+                <Label className="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <ArrowUpDown className="w-4 h-4" />
+                  Sort By
+                </Label>
+                <Select value={sortBy} onValueChange={(value: "newest" | "comments" | "votes") => setSortBy(value)}>
+                  <SelectTrigger className="w-full" data-testid="select-sort">
+                    <SelectValue placeholder="Sort by..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest" data-testid="sort-newest">Newest First</SelectItem>
+                    <SelectItem value="comments" data-testid="sort-comments">Most Comments</SelectItem>
+                    <SelectItem value="votes" data-testid="sort-votes">Highest Score</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Mobile Filter Toggle */}

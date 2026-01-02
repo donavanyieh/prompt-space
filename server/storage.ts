@@ -36,7 +36,7 @@ export interface IStorage {
   getUserTeamId(userId: string): Promise<string | null>;
   
   // Prompt operations
-  getPrompts(teamId: string, options?: { search?: string; domains?: string[]; tasks?: string[] }): Promise<Prompt[]>;
+  getPrompts(teamId: string, options?: { search?: string; domains?: string[]; tasks?: string[]; sort?: 'newest' | 'comments' | 'votes' }): Promise<Prompt[]>;
   getPrompt(id: string): Promise<Prompt | undefined>;
   createPrompt(prompt: InsertPrompt): Promise<Prompt>;
   getUserPrompts(userId: string): Promise<Prompt[]>;
@@ -144,7 +144,7 @@ export class DatabaseStorage implements IStorage {
   // Prompt Operations
   // ============================================
 
-  async getPrompts(teamId: string, options?: { search?: string; domains?: string[]; tasks?: string[] }): Promise<Prompt[]> {
+  async getPrompts(teamId: string, options?: { search?: string; domains?: string[]; tasks?: string[]; sort?: 'newest' | 'comments' | 'votes' }): Promise<Prompt[]> {
     const results = await db.select()
       .from(prompts)
       .where(eq(prompts.teamId, teamId))
@@ -173,6 +173,41 @@ export class DatabaseStorage implements IStorage {
     if (options?.tasks && options.tasks.length > 0) {
       filtered = filtered.filter((p) => options.tasks!.includes(p.task));
     }
+    
+    // Apply sorting
+    if (options?.sort === 'comments' || options?.sort === 'votes') {
+      const promptIds = filtered.map(p => p.id);
+      
+      if (promptIds.length > 0) {
+        if (options.sort === 'comments') {
+          // Get comment counts for all prompts
+          const commentCounts = await db.select({
+            promptId: comments.promptId,
+          }).from(comments).where(inArray(comments.promptId, promptIds));
+          
+          const countMap = new Map<string, number>();
+          for (const { promptId } of commentCounts) {
+            countMap.set(promptId, (countMap.get(promptId) || 0) + 1);
+          }
+          
+          filtered.sort((a, b) => (countMap.get(b.id) || 0) - (countMap.get(a.id) || 0));
+        } else if (options.sort === 'votes') {
+          // Get vote scores for all prompts
+          const allVotes = await db.select({
+            promptId: votes.promptId,
+            value: votes.value,
+          }).from(votes).where(inArray(votes.promptId, promptIds));
+          
+          const scoreMap = new Map<string, number>();
+          for (const { promptId, value } of allVotes) {
+            scoreMap.set(promptId, (scoreMap.get(promptId) || 0) + value);
+          }
+          
+          filtered.sort((a, b) => (scoreMap.get(b.id) || 0) - (scoreMap.get(a.id) || 0));
+        }
+      }
+    }
+    // Default sort is by createdAt (newest first) which is already applied by the query
     
     return filtered;
   }

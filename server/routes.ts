@@ -176,11 +176,13 @@ export async function registerRoutes(
       const search = req.query.search as string | undefined;
       const domainsParam = req.query.domains as string | undefined;
       const tasksParam = req.query.tasks as string | undefined;
+      const sortParam = req.query.sort as string | undefined;
       
       const domains = domainsParam ? domainsParam.split(",").filter(Boolean) : undefined;
       const tasks = tasksParam ? tasksParam.split(",").filter(Boolean) : undefined;
+      const sort = (sortParam === 'comments' || sortParam === 'votes') ? sortParam : 'newest';
       
-      const prompts = await storage.getPrompts(teamId, { search, domains, tasks });
+      const prompts = await storage.getPrompts(teamId, { search, domains, tasks, sort });
       res.json(prompts);
     } catch (error) {
       console.error("Error fetching prompts:", error);
