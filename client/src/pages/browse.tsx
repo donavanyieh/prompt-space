@@ -63,7 +63,7 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
 
   return (
     <Link href={`/prompt/${prompt.id}`}>
-      <Card className="hover-elevate cursor-pointer h-full flex flex-col" data-testid={`card-prompt-${prompt.id}`}>
+      <Card className="card-lift accent-glow cursor-pointer h-full flex flex-col" data-testid={`card-prompt-${prompt.id}`}>
         <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
           <h3 className="font-semibold text-base line-clamp-2 flex-1">
             {prompt.title}
@@ -73,7 +73,7 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
           </Badge>
         </CardHeader>
         <CardContent className="flex-1">
-          <pre className="font-mono text-sm text-muted-foreground line-clamp-6 whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
+          <pre className="font-mono text-sm text-muted-foreground line-clamp-6 whitespace-pre-wrap bg-muted/30 p-3 rounded-md border border-border/50">
             {prompt.prompt}
           </pre>
         </CardContent>
@@ -258,18 +258,18 @@ export default function Browse() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Collapsible Filters Sidebar */}
+      {/* Collapsible Filters Sidebar with Glass Effect */}
       <aside 
-        className={`shrink-0 border-r bg-muted/30 transition-all duration-300 ${
+        className={`shrink-0 border-r border-border/50 glass transition-all duration-300 ${
           sidebarExpanded ? "w-64" : "w-14"
         }`}
       >
         <div className="sticky top-0 h-screen flex flex-col">
           {/* Sidebar Header with Toggle */}
-          <div className={`p-3 border-b flex items-center ${sidebarExpanded ? "justify-between" : "justify-center"}`}>
+          <div className={`p-3 border-b border-border/50 flex items-center ${sidebarExpanded ? "justify-between" : "justify-center"}`}>
             {sidebarExpanded && (
               <span className="font-semibold text-sm flex items-center gap-2">
-                <Filter className="w-4 h-4" />
+                <Filter className="w-4 h-4 text-primary" />
                 Filters
               </span>
             )}
@@ -411,8 +411,8 @@ export default function Browse() {
       <main className="flex-1 overflow-auto">
         <div className="max-w-4xl mx-auto px-4 py-8">
           {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">Browse Prompts</h1>
+          <div className="mb-10">
+            <h1 className="text-3xl font-bold mb-3 tracking-tight">Browse Prompts</h1>
             <p className="text-muted-foreground">
               Discover and explore prompts shared by {activeTeam?.name || "your team"}
             </p>
