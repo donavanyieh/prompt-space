@@ -34,8 +34,16 @@ import {
   Briefcase,
   MessageSquare,
   Send,
-  FileText
+  FileText,
+  ThumbsUp,
+  ThumbsDown
 } from "lucide-react";
+
+interface VoteData {
+  upvotes: number;
+  downvotes: number;
+  userVote: number | null;
+}
 
 const commentFormSchema = z.object({
   content: z.string().min(1, "Comment cannot be empty"),
@@ -225,6 +233,27 @@ export default function PromptDetail() {
     enabled: !!promptId && isAuthenticated,
   });
 
+  const votesQuery = useQuery<VoteData>({
+    queryKey: ["/api/prompts", promptId, "votes"],
+    enabled: !!promptId && isAuthenticated,
+  });
+
+  const voteMutation = useMutation({
+    mutationFn: async (value: number) => {
+      const response = await apiRequest("POST", `/api/prompts/${promptId}/votes`, { value });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts", promptId, "votes"] });
+    },
+  });
+
+  const handleVote = (value: number) => {
+    voteMutation.mutate(value);
+  };
+
+  const voteScore = (votesQuery.data?.upvotes ?? 0) - (votesQuery.data?.downvotes ?? 0);
+
   const copyToClipboard = async () => {
     if (prompt) {
       await navigator.clipboard.writeText(prompt.prompt);
@@ -354,6 +383,37 @@ export default function PromptDetail() {
           </div>
 
           <div className="space-y-6">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-center gap-4">
+                  <Button
+                    size="icon"
+                    variant={votesQuery.data?.userVote === 1 ? "default" : "outline"}
+                    onClick={() => handleVote(1)}
+                    disabled={voteMutation.isPending}
+                    data-testid="button-upvote-detail"
+                  >
+                    <ThumbsUp className="w-5 h-5" />
+                  </Button>
+                  <span className="text-2xl font-bold min-w-[3rem] text-center" data-testid="text-vote-score-detail">
+                    {voteScore}
+                  </span>
+                  <Button
+                    size="icon"
+                    variant={votesQuery.data?.userVote === -1 ? "default" : "outline"}
+                    onClick={() => handleVote(-1)}
+                    disabled={voteMutation.isPending}
+                    data-testid="button-downvote-detail"
+                  >
+                    <ThumbsDown className="w-5 h-5" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  {votesQuery.data?.upvotes ?? 0} upvotes, {votesQuery.data?.downvotes ?? 0} downvotes
+                </p>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Details</CardTitle>

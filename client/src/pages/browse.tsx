@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,17 +8,46 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, MessageSquare, Calendar, User, Filter, X, ChevronDown, ChevronUp, Users } from "lucide-react";
+import { Search, MessageSquare, Calendar, User, Filter, X, ChevronDown, ChevronUp, Users, ThumbsUp, ThumbsDown } from "lucide-react";
 import { type Prompt, DOMAINS, TASKS } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useTeam } from "@/contexts/team-context";
 import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+
+interface VoteData {
+  upvotes: number;
+  downvotes: number;
+  userVote: number | null;
+}
 
 function PromptCard({ prompt }: { prompt: Prompt }) {
   const commentCountQuery = useQuery<number>({
     queryKey: ["/api/prompts", prompt.id, "comments", "count"],
   });
+
+  const votesQuery = useQuery<VoteData>({
+    queryKey: ["/api/prompts", prompt.id, "votes"],
+  });
+
+  const voteMutation = useMutation({
+    mutationFn: async (value: number) => {
+      const response = await apiRequest("POST", `/api/prompts/${prompt.id}/votes`, { value });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts", prompt.id, "votes"] });
+    },
+  });
+
+  const handleVote = (e: React.MouseEvent, value: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    voteMutation.mutate(value);
+  };
+
+  const voteScore = (votesQuery.data?.upvotes ?? 0) - (votesQuery.data?.downvotes ?? 0);
 
   return (
     <Link href={`/prompt/${prompt.id}`}>
@@ -37,6 +66,31 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
           </pre>
         </CardContent>
         <CardFooter className="pt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              className={`h-6 w-6 ${votesQuery.data?.userVote === 1 ? "text-green-600 dark:text-green-400" : ""}`}
+              onClick={(e) => handleVote(e, 1)}
+              disabled={voteMutation.isPending}
+              data-testid={`button-upvote-${prompt.id}`}
+            >
+              <ThumbsUp className="w-3 h-3" />
+            </Button>
+            <span className="min-w-[1.5rem] text-center font-medium" data-testid={`text-vote-score-${prompt.id}`}>
+              {voteScore}
+            </span>
+            <Button
+              size="icon"
+              variant="ghost"
+              className={`h-6 w-6 ${votesQuery.data?.userVote === -1 ? "text-red-600 dark:text-red-400" : ""}`}
+              onClick={(e) => handleVote(e, -1)}
+              disabled={voteMutation.isPending}
+              data-testid={`button-downvote-${prompt.id}`}
+            >
+              <ThumbsDown className="w-3 h-3" />
+            </Button>
+          </div>
           <Badge variant="outline" className="text-xs">
             {prompt.task}
           </Badge>
