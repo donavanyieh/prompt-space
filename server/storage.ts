@@ -297,10 +297,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserPrompts(userId: string): Promise<Prompt[]> {
-    return await db.select()
+    // Get all prompts authored by this user
+    const userPrompts = await db.select()
       .from(prompts)
       .where(eq(prompts.authorId, userId))
       .orderBy(desc(prompts.createdAt));
+    
+    if (userPrompts.length === 0) {
+      return [];
+    }
+    
+    // Get teams the user is currently a member of
+    const userTeamMemberships = await db.select({ teamId: teamMembers.teamId })
+      .from(teamMembers)
+      .where(eq(teamMembers.userId, userId));
+    
+    const userTeamIds = new Set(userTeamMemberships.map(m => m.teamId));
+    
+    // Filter to only include prompts from teams the user is still a member of
+    return userPrompts.filter(p => userTeamIds.has(p.teamId));
   }
 
   async getUserLikedPrompts(userId: string): Promise<Prompt[]> {

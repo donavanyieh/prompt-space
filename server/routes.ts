@@ -382,9 +382,21 @@ export async function registerRoutes(
     }
   });
 
-  // Get comment count for a prompt
+  // Get comment count for a prompt (requires team membership)
   app.get("/api/prompts/:id/comments/count", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
+      const prompt = await storage.getPrompt(req.params.id);
+      
+      if (!prompt) {
+        return res.status(404).json({ message: "Prompt not found" });
+      }
+      
+      const isMember = await storage.isUserInTeam(userId, prompt.teamId);
+      if (!isMember) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
       const count = await storage.getCommentCount(req.params.id);
       res.json(count);
     } catch (error) {
