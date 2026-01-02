@@ -46,6 +46,7 @@ const formSchema = z.object({
   domain: z.string().min(1, "Please select a domain"),
   task: z.string().min(1, "Please select a task"),
   notes: z.string().optional(),
+  modelUsed: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -79,6 +80,7 @@ export default function Submit() {
       domain: "",
       task: "",
       notes: "",
+      modelUsed: "",
     },
   });
 
@@ -305,6 +307,29 @@ export default function Submit() {
                     )}
                   />
                 </div>
+
+                {/* Model Used Field */}
+                <FormField
+                  control={form.control}
+                  name="modelUsed"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Model Used (optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., GPT-4, Claude 3.5, Gemini Pro..."
+                          {...field}
+                          value={field.value || ""}
+                          data-testid="input-model-used"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Which AI model was this prompt designed for?
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 {/* Notes Field */}
                 <FormField

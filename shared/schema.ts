@@ -70,6 +70,7 @@ export const prompts = pgTable("prompts", {
   domain: text("domain").notNull(),
   task: text("task").notNull(),
   notes: text("notes"),
+  modelUsed: text("model_used"),
   authorId: varchar("author_id").notNull(),
   authorName: text("author_name").notNull(),
   teamId: varchar("team_id").notNull(),

@@ -43,7 +43,8 @@ import {
   Send,
   FileText,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  Bot
 } from "lucide-react";
 
 interface VoteData {
@@ -476,6 +477,18 @@ export default function PromptDetail() {
                     <p className="text-sm font-medium">{prompt.task}</p>
                   </div>
                 </div>
+
+                {prompt.modelUsed && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Bot className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Model Used</p>
+                      <p className="text-sm font-medium">{prompt.modelUsed}</p>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
