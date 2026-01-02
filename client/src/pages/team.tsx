@@ -47,8 +47,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTeam } from "@/contexts/team-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/auth-utils";
-import { Users, Plus, Key, Copy, Check, Crown, Building2, LogOut, UserMinus, Loader2, Trash2 } from "lucide-react";
+import { Users, Plus, Key, Copy, Check, Crown, Building2, LogOut, UserMinus, Loader2, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
 import type { Team } from "@shared/schema";
 
@@ -144,102 +146,124 @@ function TeamMembersSection({
     return "?";
   };
   
+  const [isOpen, setIsOpen] = useState(false);
+  const memberCount = membersQuery.data?.length || 0;
+  
   return (
     <div className="mt-4 pt-4 border-t" onClick={(e) => e.stopPropagation()}>
-      <div className="flex items-center gap-2 mb-3">
-        <Users className="w-4 h-4 text-muted-foreground" />
-        <span className="text-sm font-medium">
-          Team Members ({membersQuery.data?.length || 0})
-        </span>
-      </div>
-      {membersQuery.isLoading ? (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-        </div>
-      ) : membersQuery.data && membersQuery.data.length > 0 ? (
-        <div className="space-y-2">
-          {membersQuery.data.map((member) => {
-            const isSelf = member.userId === userId;
-            const isTeamLeader = member.userId === team.leaderId;
-            
-            return (
-              <div 
-                key={member.id} 
-                className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-muted/50"
-                data-testid={`member-row-${member.userId}`}
-              >
-                <div className="flex items-center gap-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={member.user?.profileImageUrl || undefined} />
-                    <AvatarFallback className="text-xs">
-                      {getInitials(member)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium">
-                        {getDisplayName(member)}
-                      </span>
-                      {isTeamLeader && (
-                        <Badge variant="secondary" className="text-xs">
-                          <Crown className="w-3 h-3 mr-1" />
-                          Leader
-                        </Badge>
-                      )}
-                      {isSelf && (
-                        <Badge variant="outline" className="text-xs">You</Badge>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger asChild>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-between"
+            data-testid={`button-toggle-members-${team.id}`}
+          >
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">
+                Team Members ({memberCount})
+              </span>
+            </div>
+            {isOpen ? (
+              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            )}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          {membersQuery.isLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : membersQuery.data && membersQuery.data.length > 0 ? (
+            <ScrollArea className="max-h-48 mt-2">
+              <div className="space-y-2 pr-3">
+                {membersQuery.data.map((member) => {
+                  const isSelf = member.userId === userId;
+                  const isTeamLeader = member.userId === team.leaderId;
+                  
+                  return (
+                    <div 
+                      key={member.id} 
+                      className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-muted/50"
+                      data-testid={`member-row-${member.userId}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={member.user?.profileImageUrl || undefined} />
+                          <AvatarFallback className="text-xs">
+                            {getInitials(member)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium">
+                              {getDisplayName(member)}
+                            </span>
+                            {isTeamLeader && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Crown className="w-3 h-3 mr-1" />
+                                Leader
+                              </Badge>
+                            )}
+                            {isSelf && (
+                              <Badge variant="outline" className="text-xs">You</Badge>
+                            )}
+                          </div>
+                          {member.user?.email && (
+                            <span className="text-xs text-muted-foreground">
+                              {member.user.email}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {isLeader && !isTeamLeader && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive shrink-0"
+                              disabled={removeMemberMutation.isPending}
+                              data-testid={`button-remove-member-${member.userId}`}
+                            >
+                              <UserMinus className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove {getDisplayName(member)}?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete all of their prompts, comments, and votes from this team. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => removeMemberMutation.mutate(member.userId)}
+                                className="bg-destructive text-destructive-foreground"
+                                data-testid={`button-confirm-remove-${member.userId}`}
+                              >
+                                Remove Member
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
-                    {member.user?.email && (
-                      <span className="text-xs text-muted-foreground">
-                        {member.user.email}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                {isLeader && !isTeamLeader && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive shrink-0"
-                        disabled={removeMemberMutation.isPending}
-                        data-testid={`button-remove-member-${member.userId}`}
-                      >
-                        <UserMinus className="w-4 h-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Remove {getDisplayName(member)}?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently delete all of their prompts, comments, and votes from this team. This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => removeMemberMutation.mutate(member.userId)}
-                          className="bg-destructive text-destructive-foreground"
-                          data-testid={`button-confirm-remove-${member.userId}`}
-                        >
-                          Remove Member
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground text-center py-2">
-          No members found
-        </p>
-      )}
+            </ScrollArea>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              No members found
+            </p>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }
