@@ -153,6 +153,42 @@ export async function registerRoutes(
     }
   });
 
+  // Remove a member from a team (leader only, cascade deletes all their data)
+  app.delete("/api/teams/:teamId/members/:userId", isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUserId = req.user.claims.sub;
+      const { teamId, userId: targetUserId } = req.params;
+      
+      // Verify requester is the team leader
+      const team = await storage.getTeam(teamId);
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+      
+      if (team.leaderId !== currentUserId) {
+        return res.status(403).json({ message: "Only the team leader can remove members" });
+      }
+      
+      // Cannot remove yourself (the leader)
+      if (targetUserId === currentUserId) {
+        return res.status(400).json({ message: "Cannot remove yourself as the team leader" });
+      }
+      
+      // Verify target is a member
+      const isMember = await storage.isUserInTeam(targetUserId, teamId);
+      if (!isMember) {
+        return res.status(404).json({ message: "User is not a member of this team" });
+      }
+      
+      // Remove with cascade (deletes prompts, comments, votes)
+      await storage.removeTeamMemberWithCascade(teamId, targetUserId);
+      res.json({ message: "Member removed successfully" });
+    } catch (error) {
+      console.error("Error removing team member:", error);
+      res.status(500).json({ message: "Failed to remove team member" });
+    }
+  });
+
   // ============================================
   // Prompt Routes
   // ============================================

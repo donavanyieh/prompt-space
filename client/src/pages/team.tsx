@@ -47,8 +47,24 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTeam } from "@/contexts/team-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/auth-utils";
-import { Users, Plus, Key, Copy, Check, Crown, Building2, LogOut } from "lucide-react";
+import { Users, Plus, Key, Copy, Check, Crown, Building2, LogOut, UserMinus, Loader2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useQuery } from "@tanstack/react-query";
 import type { Team } from "@shared/schema";
+
+interface TeamMemberWithUser {
+  id: string;
+  teamId: string;
+  userId: string;
+  joinedAt: string;
+  user: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    profileImageUrl: string | null;
+  } | null;
+}
 
 // Form validation schemas
 const createTeamSchema = z.object({
@@ -61,6 +77,176 @@ const joinTeamSchema = z.object({
 
 type CreateTeamValues = z.infer<typeof createTeamSchema>;
 type JoinTeamValues = z.infer<typeof joinTeamSchema>;
+
+/**
+ * Team members section for leaders to view and manage members.
+ */
+function TeamMembersSection({ 
+  team,
+  userId 
+}: { 
+  team: Team;
+  userId: string;
+}) {
+  const { toast } = useToast();
+  const isLeader = team.leaderId === userId;
+  
+  const membersQuery = useQuery<TeamMemberWithUser[]>({
+    queryKey: ["/api/teams", team.id, "members"],
+    queryFn: async () => {
+      const response = await fetch(`/api/teams/${team.id}/members`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch members");
+      return response.json();
+    },
+  });
+  
+  const removeMemberMutation = useMutation({
+    mutationFn: async (targetUserId: string) => {
+      const response = await apiRequest("DELETE", `/api/teams/${team.id}/members/${targetUserId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/teams", team.id, "members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
+      toast({
+        title: "Member removed",
+        description: "The member and all their data have been removed from this team.",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Session expired", description: "Please log in again.", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove member",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  if (!isLeader) return null;
+  
+  const getDisplayName = (member: TeamMemberWithUser) => {
+    if (member.user?.firstName && member.user?.lastName) {
+      return `${member.user.firstName} ${member.user.lastName}`;
+    }
+    return member.user?.email || "Unknown User";
+  };
+  
+  const getInitials = (member: TeamMemberWithUser) => {
+    if (member.user?.firstName && member.user?.lastName) {
+      return `${member.user.firstName[0]}${member.user.lastName[0]}`.toUpperCase();
+    }
+    if (member.user?.email) {
+      return member.user.email[0].toUpperCase();
+    }
+    return "?";
+  };
+  
+  return (
+    <Card className="mt-4">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Users className="w-4 h-4" />
+          Team Members ({membersQuery.data?.length || 0})
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {membersQuery.isLoading ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : membersQuery.data && membersQuery.data.length > 0 ? (
+          <div className="space-y-2">
+            {membersQuery.data.map((member) => {
+              const isSelf = member.userId === userId;
+              const isTeamLeader = member.userId === team.leaderId;
+              
+              return (
+                <div 
+                  key={member.id} 
+                  className="flex items-center justify-between gap-3 p-2 rounded-md hover:bg-muted/50"
+                  data-testid={`member-row-${member.userId}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={member.user?.profileImageUrl || undefined} />
+                      <AvatarFallback className="text-xs">
+                        {getInitials(member)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">
+                          {getDisplayName(member)}
+                        </span>
+                        {isTeamLeader && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Crown className="w-3 h-3 mr-1" />
+                            Leader
+                          </Badge>
+                        )}
+                        {isSelf && !isTeamLeader && (
+                          <Badge variant="outline" className="text-xs">You</Badge>
+                        )}
+                      </div>
+                      {member.user?.email && (
+                        <span className="text-xs text-muted-foreground">
+                          {member.user.email}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {!isTeamLeader && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive shrink-0"
+                          disabled={removeMemberMutation.isPending}
+                          data-testid={`button-remove-member-${member.userId}`}
+                        >
+                          <UserMinus className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Remove {getDisplayName(member)}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete all of their prompts, comments, and votes from this team. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => removeMemberMutation.mutate(member.userId)}
+                            className="bg-destructive text-destructive-foreground"
+                            data-testid={`button-confirm-remove-${member.userId}`}
+                          >
+                            Remove Member
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-2">
+            No members found
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 /**
  * Individual team card showing team info and join code (for leaders).
@@ -453,16 +639,18 @@ export default function TeamPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {teams.map((team) => (
-              <TeamCard 
-                key={team.id} 
-                team={team} 
-                userId={user.id}
-                onCopyCode={copyToClipboard}
-                onLeaveTeam={(teamId) => leaveMutation.mutate(teamId)}
-                isLeavePending={leaveMutation.isPending}
-              />
+              <div key={team.id}>
+                <TeamCard 
+                  team={team} 
+                  userId={user.id}
+                  onCopyCode={copyToClipboard}
+                  onLeaveTeam={(teamId) => leaveMutation.mutate(teamId)}
+                  isLeavePending={leaveMutation.isPending}
+                />
+                <TeamMembersSection team={team} userId={user.id} />
+              </div>
             ))}
           </div>
         )}

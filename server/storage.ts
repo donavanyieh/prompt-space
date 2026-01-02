@@ -32,6 +32,7 @@ export interface IStorage {
   getTeamMembers(teamId: string): Promise<TeamMember[]>;
   addTeamMember(member: InsertTeamMember): Promise<TeamMember>;
   removeTeamMember(teamId: string, userId: string): Promise<void>;
+  removeTeamMemberWithCascade(teamId: string, userId: string): Promise<void>;
   isUserInTeam(userId: string, teamId: string): Promise<boolean>;
   getUserTeamId(userId: string): Promise<string | null>;
   
@@ -126,6 +127,50 @@ export class DatabaseStorage implements IStorage {
   }
 
   async removeTeamMember(teamId: string, userId: string): Promise<void> {
+    await db.delete(teamMembers)
+      .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)));
+  }
+
+  async removeTeamMemberWithCascade(teamId: string, userId: string): Promise<void> {
+    // Get all prompts by this user in this team
+    const userPrompts = await db.select({ id: prompts.id })
+      .from(prompts)
+      .where(and(eq(prompts.teamId, teamId), eq(prompts.authorId, userId)));
+    
+    const promptIds = userPrompts.map(p => p.id);
+    
+    if (promptIds.length > 0) {
+      // Delete comments on user's prompts
+      await db.delete(comments).where(inArray(comments.promptId, promptIds));
+      // Delete votes on user's prompts
+      await db.delete(votes).where(inArray(votes.promptId, promptIds));
+      // Delete the prompts
+      await db.delete(prompts).where(inArray(prompts.id, promptIds));
+    }
+    
+    // Delete comments made by this user in this team
+    const teamPrompts = await db.select({ id: prompts.id })
+      .from(prompts)
+      .where(eq(prompts.teamId, teamId));
+    const teamPromptIds = teamPrompts.map(p => p.id);
+    
+    if (teamPromptIds.length > 0) {
+      await db.delete(comments).where(
+        and(
+          inArray(comments.promptId, teamPromptIds),
+          eq(comments.authorId, userId)
+        )
+      );
+      // Delete votes by this user on team prompts
+      await db.delete(votes).where(
+        and(
+          inArray(votes.promptId, teamPromptIds),
+          eq(votes.userId, userId)
+        )
+      );
+    }
+    
+    // Finally remove the team membership
     await db.delete(teamMembers)
       .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)));
   }
