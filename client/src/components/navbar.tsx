@@ -27,6 +27,7 @@ const navItems = [
   { label: "Home", href: "/" },
   { label: "Browse Prompts", href: "/browse" },
   { label: "Submit Prompt", href: "/submit" },
+  { label: "Manage Teams", href: "/team" },
 ];
 
 /**
