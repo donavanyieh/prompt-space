@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -72,6 +72,14 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const votes = pgTable("votes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  promptId: varchar("prompt_id").notNull(),
+  userId: varchar("user_id").notNull(),
+  value: integer("value").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const teamsRelations = relations(teams, ({ many }) => ({
   members: many(teamMembers),
   prompts: many(prompts),
@@ -99,6 +107,13 @@ export const commentsRelations = relations(comments, ({ one }) => ({
   }),
 }));
 
+export const votesRelations = relations(votes, ({ one }) => ({
+  prompt: one(prompts, {
+    fields: [votes.promptId],
+    references: [prompts.id],
+  }),
+}));
+
 export const insertTeamSchema = createInsertSchema(teams).omit({
   id: true,
   createdAt: true,
@@ -120,6 +135,11 @@ export const insertCommentSchema = createInsertSchema(comments).omit({
   createdAt: true,
 });
 
+export const insertVoteSchema = createInsertSchema(votes).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type Team = typeof teams.$inferSelect;
 
@@ -131,3 +151,6 @@ export type Prompt = typeof prompts.$inferSelect;
 
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type Comment = typeof comments.$inferSelect;
+
+export type InsertVote = z.infer<typeof insertVoteSchema>;
+export type Vote = typeof votes.$inferSelect;
