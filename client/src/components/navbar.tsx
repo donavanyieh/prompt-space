@@ -58,13 +58,6 @@ function TeamSwitcher() {
             <span className="truncate">{team.name}</span>
           </DropdownMenuItem>
         ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/team" className="gap-2">
-            <Users className="w-4 h-4" />
-            Manage Teams
-          </Link>
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -203,17 +196,6 @@ export function Navbar() {
                   </Button>
                 </Link>
               ))}
-              <Link href="/team">
-                <Button
-                  variant={location === "/team" ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  onClick={() => setMobileMenuOpen(false)}
-                  data-testid="link-mobile-nav-team"
-                >
-                  <Users className="w-4 h-4 mr-2" />
-                  Manage Teams
-                </Button>
-              </Link>
             </div>
           </nav>
         )}
