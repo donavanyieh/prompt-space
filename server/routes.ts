@@ -129,6 +129,30 @@ export async function registerRoutes(
     }
   });
 
+  // Leave a team (user removes themselves from the team)
+  app.delete("/api/teams/:id/leave", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const teamId = req.params.id;
+      
+      const isMember = await storage.isUserInTeam(userId, teamId);
+      if (!isMember) {
+        return res.status(403).json({ message: "Not a member of this team" });
+      }
+      
+      const team = await storage.getTeam(teamId);
+      if (team?.leaderId === userId) {
+        return res.status(400).json({ message: "Team leaders cannot leave their own team" });
+      }
+      
+      await storage.removeTeamMember(teamId, userId);
+      res.json({ message: "Successfully left the team" });
+    } catch (error) {
+      console.error("Error leaving team:", error);
+      res.status(500).json({ message: "Failed to leave team" });
+    }
+  });
+
   // ============================================
   // Prompt Routes
   // ============================================
