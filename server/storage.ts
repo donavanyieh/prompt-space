@@ -31,6 +31,7 @@ export interface IStorage {
   // Team membership operations
   getTeamMembers(teamId: string): Promise<TeamMember[]>;
   addTeamMember(member: InsertTeamMember): Promise<TeamMember>;
+  removeTeamMember(teamId: string, userId: string): Promise<void>;
   isUserInTeam(userId: string, teamId: string): Promise<boolean>;
   getUserTeamId(userId: string): Promise<string | null>;
   
@@ -119,6 +120,11 @@ export class DatabaseStorage implements IStorage {
       .values(member)
       .returning();
     return teamMember;
+  }
+
+  async removeTeamMember(teamId: string, userId: string): Promise<void> {
+    await db.delete(teamMembers)
+      .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.userId, userId)));
   }
 
   async isUserInTeam(userId: string, teamId: string): Promise<boolean> {
