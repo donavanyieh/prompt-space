@@ -146,6 +146,33 @@ function CommentSection({ promptId }: { promptId: string }) {
         Comments ({comments?.length || 0})
       </h3>
 
+      {/* Comments List */}
+      {isLoading ? (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="flex gap-3">
+              <Skeleton className="w-8 h-8 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : comments && comments.length > 0 ? (
+        <div className="divide-y">
+          {comments.map((comment) => (
+            <CommentItem key={comment.id} comment={comment} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground text-center py-6">
+          No comments yet. Be the first to share your thoughts!
+        </p>
+      )}
+
+      <Separator />
+
       {/* Comment Form */}
       {isAuthenticated && (
         <Form {...form}>
@@ -192,33 +219,6 @@ function CommentSection({ promptId }: { promptId: string }) {
             </div>
           </form>
         </Form>
-      )}
-
-      <Separator />
-
-      {/* Comments List */}
-      {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="flex gap-3">
-              <Skeleton className="w-8 h-8 rounded-full" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : comments && comments.length > 0 ? (
-        <div className="divide-y">
-          {comments.map((comment) => (
-            <CommentItem key={comment.id} comment={comment} />
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground text-center py-6">
-          No comments yet. Be the first to share your thoughts!
-        </p>
       )}
     </div>
   );
