@@ -1,4 +1,11 @@
-import { useEffect } from "react";
+/**
+ * Submit Page
+ * 
+ * Form for creating and submitting new prompts to the active team.
+ * Includes validation, preview mode, and categorization options.
+ */
+
+import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,8 +38,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/auth-utils";
 import { DOMAINS, TASKS } from "@shared/schema";
 import { Send, Eye, EyeOff, Users } from "lucide-react";
-import { useState } from "react";
 
+// Form validation schema
 const formSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   prompt: z.string().min(10, "Prompt must be at least 10 characters"),
@@ -50,6 +57,7 @@ export default function Submit() {
   const { activeTeam, hasTeams, isLoading: teamsLoading } = useTeam();
   const [showPreview, setShowPreview] = useState(false);
 
+  // Redirect unauthenticated users
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       toast({
@@ -111,6 +119,7 @@ export default function Submit() {
 
   const watchedPrompt = form.watch("prompt");
 
+  // Loading state
   if (authLoading || teamsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -123,6 +132,7 @@ export default function Submit() {
     return null;
   }
 
+  // Prompt user to join a team if they haven't
   if (!hasTeams) {
     return (
       <div className="min-h-screen py-8 px-4">
@@ -147,6 +157,7 @@ export default function Submit() {
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-3xl mx-auto">
+        {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Submit a Prompt</h1>
           <p className="text-muted-foreground">
@@ -164,6 +175,7 @@ export default function Submit() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Title Field */}
                 <FormField
                   control={form.control}
                   name="title"
@@ -185,6 +197,7 @@ export default function Submit() {
                   )}
                 />
 
+                {/* Prompt Field with Preview Toggle */}
                 <FormField
                   control={form.control}
                   name="prompt"
@@ -234,6 +247,7 @@ export default function Submit() {
                   )}
                 />
 
+                {/* Domain and Task Selectors */}
                 <div className="grid sm:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
@@ -292,6 +306,7 @@ export default function Submit() {
                   />
                 </div>
 
+                {/* Notes Field */}
                 <FormField
                   control={form.control}
                   name="notes"
@@ -317,6 +332,7 @@ export default function Submit() {
               </CardContent>
             </Card>
 
+            {/* Form Actions */}
             <div className="flex justify-end gap-4">
               <Button
                 type="button"

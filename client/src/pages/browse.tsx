@@ -1,3 +1,10 @@
+/**
+ * Browse Page
+ * 
+ * Displays a searchable, filterable grid of prompts for the active team.
+ * Users can filter by domain and task, search by text, and vote on prompts.
+ */
+
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -22,6 +29,9 @@ interface VoteData {
   userVote: number | null;
 }
 
+/**
+ * Individual prompt card component with voting functionality.
+ */
 function PromptCard({ prompt }: { prompt: Prompt }) {
   const commentCountQuery = useQuery<number>({
     queryKey: ["/api/prompts", prompt.id, "comments", "count"],
@@ -66,6 +76,7 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
           </pre>
         </CardContent>
         <CardFooter className="pt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          {/* Voting controls */}
           <div className="flex items-center gap-1">
             <Button
               size="icon"
@@ -112,6 +123,9 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
   );
 }
 
+/**
+ * Loading skeleton for prompt cards.
+ */
 function PromptCardSkeleton() {
   return (
     <Card className="h-full flex flex-col">
@@ -135,11 +149,14 @@ export default function Browse() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { activeTeam, hasTeams, isLoading: teamsLoading } = useTeam();
+  
+  // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Redirect unauthenticated users
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       toast({
@@ -153,6 +170,7 @@ export default function Browse() {
     }
   }, [authLoading, isAuthenticated, toast]);
 
+  // Build query parameters for API request
   const queryParams = new URLSearchParams();
   if (activeTeam) queryParams.set("teamId", activeTeam.id);
   if (searchQuery) queryParams.set("search", searchQuery);
@@ -173,6 +191,7 @@ export default function Browse() {
     enabled: isAuthenticated && !!activeTeam,
   });
 
+  // Filter toggle handlers
   const toggleDomain = (domain: string) => {
     setSelectedDomains((prev) =>
       prev.includes(domain)
@@ -197,6 +216,7 @@ export default function Browse() {
 
   const hasActiveFilters = selectedDomains.length > 0 || selectedTasks.length > 0 || searchQuery;
 
+  // Loading state
   if (authLoading || teamsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -209,6 +229,7 @@ export default function Browse() {
     return null;
   }
 
+  // Prompt user to join a team if they haven't
   if (!hasTeams) {
     return (
       <div className="min-h-screen py-8 px-4">
@@ -233,6 +254,7 @@ export default function Browse() {
   return (
     <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Browse Prompts</h1>
           <p className="text-muted-foreground">
@@ -241,8 +263,10 @@ export default function Browse() {
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
+          {/* Filters Sidebar */}
           <aside className="lg:w-64 shrink-0">
             <div className="sticky top-20 space-y-4">
+              {/* Search Input */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -255,6 +279,7 @@ export default function Browse() {
                 />
               </div>
 
+              {/* Mobile Filter Toggle */}
               <Button
                 variant="outline"
                 className="w-full lg:hidden justify-between"
@@ -272,6 +297,7 @@ export default function Browse() {
                 {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </Button>
 
+              {/* Filter Controls */}
               <div className={`space-y-6 ${showFilters ? "block" : "hidden lg:block"}`}>
                 {hasActiveFilters && (
                   <Button
@@ -286,6 +312,7 @@ export default function Browse() {
                   </Button>
                 )}
 
+                {/* Domain Filter */}
                 <div>
                   <h3 className="font-semibold text-sm mb-3">Domain</h3>
                   <div className="space-y-2">
@@ -308,6 +335,7 @@ export default function Browse() {
                   </div>
                 </div>
 
+                {/* Task Filter */}
                 <div>
                   <h3 className="font-semibold text-sm mb-3">Task</h3>
                   <div className="space-y-2">
@@ -333,7 +361,9 @@ export default function Browse() {
             </div>
           </aside>
 
+          {/* Prompt Grid */}
           <main className="flex-1">
+            {/* Active Filter Tags */}
             {hasActiveFilters && (
               <div className="flex flex-wrap gap-2 mb-4">
                 {searchQuery && (
@@ -363,6 +393,7 @@ export default function Browse() {
               </div>
             )}
 
+            {/* Content States */}
             {isLoading ? (
               <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {[...Array(6)].map((_, i) => (

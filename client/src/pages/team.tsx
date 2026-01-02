@@ -1,13 +1,19 @@
+/**
+ * Team Management Page
+ * 
+ * Allows users to view their teams, create new teams, join existing teams,
+ * switch between teams, and share join codes with teammates.
+ */
+
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +39,7 @@ import { isUnauthorizedError } from "@/lib/auth-utils";
 import { Users, Plus, Key, Copy, Check, Crown, Building2 } from "lucide-react";
 import type { Team } from "@shared/schema";
 
+// Form validation schemas
 const createTeamSchema = z.object({
   name: z.string().min(2, "Team name must be at least 2 characters"),
 });
@@ -44,6 +51,9 @@ const joinTeamSchema = z.object({
 type CreateTeamValues = z.infer<typeof createTeamSchema>;
 type JoinTeamValues = z.infer<typeof joinTeamSchema>;
 
+/**
+ * Individual team card showing team info and join code (for leaders).
+ */
 function TeamCard({ team, userId, onCopyCode }: { team: Team; userId: string; onCopyCode: (code: string) => void }) {
   const isLeader = team.leaderId === userId;
   const [copied, setCopied] = useState(false);
@@ -118,6 +128,7 @@ export default function TeamPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
 
+  // Redirect unauthenticated users
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       toast({
@@ -131,6 +142,7 @@ export default function TeamPage() {
     }
   }, [authLoading, isAuthenticated, toast]);
 
+  // Form instances
   const createForm = useForm<CreateTeamValues>({
     resolver: zodResolver(createTeamSchema),
     defaultValues: { name: "" },
@@ -141,6 +153,7 @@ export default function TeamPage() {
     defaultValues: { joinCode: "" },
   });
 
+  // Create team mutation
   const createMutation = useMutation({
     mutationFn: async (data: CreateTeamValues) => {
       const response = await apiRequest("POST", "/api/teams", data);
@@ -169,6 +182,7 @@ export default function TeamPage() {
     },
   });
 
+  // Join team mutation
   const joinMutation = useMutation({
     mutationFn: async (data: JoinTeamValues) => {
       const response = await apiRequest("POST", "/api/teams/join", data);
@@ -205,6 +219,7 @@ export default function TeamPage() {
     });
   };
 
+  // Loading state
   if (authLoading || teamsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -220,6 +235,7 @@ export default function TeamPage() {
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-3xl mx-auto">
+        {/* Page Header */}
         <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-3xl font-bold mb-2">Your Teams</h1>
@@ -228,6 +244,7 @@ export default function TeamPage() {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
+            {/* Join Team Dialog */}
             <Dialog open={joinDialogOpen} onOpenChange={setJoinDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" data-testid="button-open-join-dialog">
@@ -277,6 +294,7 @@ export default function TeamPage() {
               </DialogContent>
             </Dialog>
 
+            {/* Create Team Dialog */}
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button data-testid="button-open-create-dialog">
@@ -328,6 +346,7 @@ export default function TeamPage() {
           </div>
         </div>
 
+        {/* Team List or Empty State */}
         {teams.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>

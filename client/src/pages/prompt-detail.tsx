@@ -1,3 +1,10 @@
+/**
+ * Prompt Detail Page
+ * 
+ * Displays a single prompt with full content, voting controls,
+ * metadata, and a comment section for team discussion.
+ */
+
 import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -51,6 +58,9 @@ const commentFormSchema = z.object({
 
 type CommentFormValues = z.infer<typeof commentFormSchema>;
 
+/**
+ * Individual comment display component.
+ */
 function CommentItem({ comment }: { comment: Comment }) {
   const initials = comment.authorName
     .split(" ")
@@ -77,6 +87,9 @@ function CommentItem({ comment }: { comment: Comment }) {
   );
 }
 
+/**
+ * Comment section with form and list of comments.
+ */
 function CommentSection({ promptId }: { promptId: string }) {
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
@@ -132,6 +145,7 @@ function CommentSection({ promptId }: { promptId: string }) {
         Comments ({comments?.length || 0})
       </h3>
 
+      {/* Comment Form */}
       {isAuthenticated && (
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
@@ -181,6 +195,7 @@ function CommentSection({ promptId }: { promptId: string }) {
 
       <Separator />
 
+      {/* Comments List */}
       {isLoading ? (
         <div className="space-y-4">
           {[...Array(3)].map((_, i) => (
@@ -215,6 +230,7 @@ export default function PromptDetail() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
 
+  // Redirect unauthenticated users
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       toast({
@@ -228,11 +244,13 @@ export default function PromptDetail() {
     }
   }, [authLoading, isAuthenticated, toast]);
 
+  // Fetch prompt data
   const { data: prompt, isLoading } = useQuery<Prompt>({
     queryKey: ["/api/prompts", promptId],
     enabled: !!promptId && isAuthenticated,
   });
 
+  // Fetch vote data
   const votesQuery = useQuery<VoteData>({
     queryKey: ["/api/prompts", promptId, "votes"],
     enabled: !!promptId && isAuthenticated,
@@ -262,6 +280,7 @@ export default function PromptDetail() {
     }
   };
 
+  // Loading states
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -293,6 +312,7 @@ export default function PromptDetail() {
     );
   }
 
+  // Not found state
   if (!prompt) {
     return (
       <div className="min-h-screen py-8 px-4">
@@ -315,6 +335,7 @@ export default function PromptDetail() {
   return (
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-5xl mx-auto">
+        {/* Back Navigation */}
         <Link href="/browse">
           <Button variant="ghost" size="sm" className="mb-6" data-testid="button-back-to-browse">
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -323,7 +344,9 @@ export default function PromptDetail() {
         </Link>
 
         <div className="grid lg:grid-cols-3 gap-6">
+          {/* Main Content Column */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Prompt Card */}
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div className="space-y-1">
@@ -359,6 +382,7 @@ export default function PromptDetail() {
               </CardContent>
             </Card>
 
+            {/* Notes Card (if present) */}
             {prompt.notes && (
               <Card>
                 <CardHeader>
@@ -375,6 +399,7 @@ export default function PromptDetail() {
               </Card>
             )}
 
+            {/* Comments Section */}
             <Card>
               <CardContent className="pt-6">
                 <CommentSection promptId={prompt.id} />
@@ -382,7 +407,9 @@ export default function PromptDetail() {
             </Card>
           </div>
 
+          {/* Sidebar Column */}
           <div className="space-y-6">
+            {/* Voting Card */}
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-center gap-4">
@@ -414,6 +441,7 @@ export default function PromptDetail() {
               </CardContent>
             </Card>
 
+            {/* Metadata Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg">Details</CardTitle>
@@ -463,6 +491,7 @@ export default function PromptDetail() {
               </CardContent>
             </Card>
 
+            {/* Use Prompt CTA */}
             <Button className="w-full" onClick={copyToClipboard} data-testid="button-use-prompt">
               {copied ? (
                 <>

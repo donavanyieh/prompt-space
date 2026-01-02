@@ -1,8 +1,15 @@
+/**
+ * Home Page
+ * 
+ * Landing page that displays the value proposition and guides users
+ * to log in, set up a team, or start browsing prompts based on their state.
+ */
+
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, Share2, MessageSquare, Sparkles, ArrowRight, Code2, LogIn, Users } from "lucide-react";
+import { Search, Share2, Sparkles, ArrowRight, Code2, LogIn, Users } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import type { Team } from "@shared/schema";
@@ -10,6 +17,7 @@ import type { Team } from "@shared/schema";
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
   
+  // Fetch user's teams to determine appropriate CTA
   const { data: teams } = useQuery<Team[]>({
     queryKey: ["/api/teams/my"],
     enabled: isAuthenticated,
@@ -19,6 +27,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen">
+      {/* Hero Section */}
       <section className="py-20 px-4">
         <div className="max-w-5xl mx-auto text-center">
           <Badge variant="secondary" className="mb-6">
@@ -36,6 +45,7 @@ export default function Home() {
             across your organization. Build a knowledge base that scales with your team.
           </p>
           
+          {/* Dynamic CTA based on auth and team state */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {isLoading ? null : isAuthenticated ? (
               hasTeam ? (
@@ -74,6 +84,7 @@ export default function Home() {
         </div>
       </section>
 
+      {/* How It Works Section */}
       <section className="py-16 px-4 bg-muted/30">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
@@ -125,6 +136,7 @@ export default function Home() {
         </div>
       </section>
 
+      {/* CTA Section */}
       <section className="py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 mb-6">
