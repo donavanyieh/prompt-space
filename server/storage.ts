@@ -1,3 +1,10 @@
+/**
+ * Database Storage Layer
+ * 
+ * Provides CRUD operations for all application entities.
+ * All database access goes through this layer to maintain separation of concerns.
+ */
+
 import { 
   prompts, comments, teams, teamMembers, votes,
   type Prompt, type InsertPrompt, 
@@ -7,39 +14,59 @@ import {
   type Vote, type InsertVote
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, ilike, inArray, desc, sql } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
+/**
+ * Storage interface defining all available database operations.
+ * Implementations must fulfill this contract for data persistence.
+ */
 export interface IStorage {
+  // Team operations
   getTeam(id: string): Promise<Team | undefined>;
   getTeamByJoinCode(joinCode: string): Promise<Team | undefined>;
   createTeam(team: InsertTeam): Promise<Team>;
   getUserTeams(userId: string): Promise<Team[]>;
   
+  // Team membership operations
   getTeamMembers(teamId: string): Promise<TeamMember[]>;
   addTeamMember(member: InsertTeamMember): Promise<TeamMember>;
   isUserInTeam(userId: string, teamId: string): Promise<boolean>;
   getUserTeamId(userId: string): Promise<string | null>;
   
+  // Prompt operations
   getPrompts(teamId: string, options?: { search?: string; domains?: string[]; tasks?: string[] }): Promise<Prompt[]>;
   getPrompt(id: string): Promise<Prompt | undefined>;
   createPrompt(prompt: InsertPrompt): Promise<Prompt>;
   
+  // Comment operations
   getComments(promptId: string): Promise<Comment[]>;
   getCommentCount(promptId: string): Promise<number>;
   createComment(comment: InsertComment): Promise<Comment>;
   
+  // Vote operations
   getVote(promptId: string, userId: string): Promise<Vote | undefined>;
   getVoteCounts(promptId: string): Promise<{ upvotes: number; downvotes: number }>;
   upsertVote(vote: InsertVote): Promise<Vote>;
   removeVote(promptId: string, userId: string): Promise<void>;
 }
 
+/**
+ * Generates an 8-character uppercase hex code for team invitations.
+ */
 function generateJoinCode(): string {
   return randomBytes(4).toString('hex').toUpperCase();
 }
 
+/**
+ * PostgreSQL implementation of the storage interface using Drizzle ORM.
+ */
 export class DatabaseStorage implements IStorage {
+  
+  // ============================================
+  // Team Operations
+  // ============================================
+
   async getTeam(id: string): Promise<Team | undefined> {
     const [team] = await db.select().from(teams).where(eq(teams.id, id));
     return team;
@@ -57,6 +84,7 @@ export class DatabaseStorage implements IStorage {
       .values({ ...insertTeam, joinCode })
       .returning();
     
+    // Automatically add the creator as the first team member
     await this.addTeamMember({ teamId: team.id, userId: insertTeam.leaderId });
     return team;
   }
@@ -69,11 +97,16 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(teams).where(inArray(teams.id, teamIds));
   }
 
+  // ============================================
+  // Team Membership Operations
+  // ============================================
+
   async getTeamMembers(teamId: string): Promise<TeamMember[]> {
     return await db.select().from(teamMembers).where(eq(teamMembers.teamId, teamId));
   }
 
   async addTeamMember(member: InsertTeamMember): Promise<TeamMember> {
+    // Check if user is already a member (prevent duplicates)
     const existing = await db.select().from(teamMembers)
       .where(and(eq(teamMembers.teamId, member.teamId), eq(teamMembers.userId, member.userId)));
     
@@ -99,13 +132,19 @@ export class DatabaseStorage implements IStorage {
     return membership?.teamId || null;
   }
 
+  // ============================================
+  // Prompt Operations
+  // ============================================
+
   async getPrompts(teamId: string, options?: { search?: string; domains?: string[]; tasks?: string[] }): Promise<Prompt[]> {
-    let query = db.select().from(prompts).where(eq(prompts.teamId, teamId));
-    
-    const results = await query.orderBy(desc(prompts.createdAt));
+    const results = await db.select()
+      .from(prompts)
+      .where(eq(prompts.teamId, teamId))
+      .orderBy(desc(prompts.createdAt));
     
     let filtered = results;
     
+    // Apply search filter (matches title, prompt content, notes, domain, or task)
     if (options?.search) {
       const searchLower = options.search.toLowerCase();
       filtered = filtered.filter((p) =>
@@ -117,10 +156,12 @@ export class DatabaseStorage implements IStorage {
       );
     }
     
+    // Apply domain filter
     if (options?.domains && options.domains.length > 0) {
       filtered = filtered.filter((p) => options.domains!.includes(p.domain));
     }
     
+    // Apply task filter
     if (options?.tasks && options.tasks.length > 0) {
       filtered = filtered.filter((p) => options.tasks!.includes(p.task));
     }
@@ -141,6 +182,10 @@ export class DatabaseStorage implements IStorage {
     return prompt;
   }
 
+  // ============================================
+  // Comment Operations
+  // ============================================
+
   async getComments(promptId: string): Promise<Comment[]> {
     return await db.select().from(comments)
       .where(eq(comments.promptId, promptId))
@@ -160,6 +205,10 @@ export class DatabaseStorage implements IStorage {
     return comment;
   }
 
+  // ============================================
+  // Vote Operations
+  // ============================================
+
   async getVote(promptId: string, userId: string): Promise<Vote | undefined> {
     const [vote] = await db.select().from(votes)
       .where(and(eq(votes.promptId, promptId), eq(votes.userId, userId)));
@@ -177,6 +226,7 @@ export class DatabaseStorage implements IStorage {
     const existing = await this.getVote(insertVote.promptId, insertVote.userId);
     
     if (existing) {
+      // Update existing vote
       const [updated] = await db.update(votes)
         .set({ value: insertVote.value })
         .where(eq(votes.id, existing.id))
@@ -184,6 +234,7 @@ export class DatabaseStorage implements IStorage {
       return updated;
     }
     
+    // Create new vote
     const [vote] = await db.insert(votes).values(insertVote).returning();
     return vote;
   }
@@ -195,4 +246,5 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
+// Export singleton instance
 export const storage = new DatabaseStorage();

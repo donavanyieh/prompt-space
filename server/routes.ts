@@ -1,16 +1,27 @@
+/**
+ * API Routes
+ * 
+ * Defines all REST API endpoints for the application.
+ * All routes (except auth) require authentication and validate team membership.
+ */
+
 import type { Express } from "express";
-import { createServer, type Server } from "http";
+import { type Server } from "http";
 import { storage } from "./storage";
 import { insertPromptSchema, insertCommentSchema, insertTeamSchema } from "@shared/schema";
 import { z } from "zod";
-import { isAuthenticated } from "./replit_integrations/auth";
-import { authStorage } from "./replit_integrations/auth";
+import { isAuthenticated, authStorage } from "./replit_integrations/auth";
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
   
+  // ============================================
+  // Team Routes
+  // ============================================
+
+  // Get all teams the current user belongs to
   app.get("/api/teams/my", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -22,10 +33,12 @@ export async function registerRoutes(
     }
   });
 
+  // Get a specific team by ID (requires membership)
   app.get("/api/teams/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const team = await storage.getTeam(req.params.id);
+      
       if (!team) {
         return res.status(404).json({ message: "Team not found" });
       }
@@ -42,15 +55,19 @@ export async function registerRoutes(
     }
   });
 
+  // Get team members with user details (requires membership)
   app.get("/api/teams/:id/members", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const isMember = await storage.isUserInTeam(userId, req.params.id);
+      
       if (!isMember) {
         return res.status(403).json({ message: "Not a member of this team" });
       }
       
       const members = await storage.getTeamMembers(req.params.id);
+      
+      // Enrich with user profile data
       const memberDetails = await Promise.all(
         members.map(async (m) => {
           const user = await authStorage.getUser(m.userId);
@@ -73,6 +90,7 @@ export async function registerRoutes(
     }
   });
 
+  // Create a new team (user becomes leader and first member)
   app.post("/api/teams", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -88,6 +106,7 @@ export async function registerRoutes(
     }
   });
 
+  // Join an existing team using a join code
   app.post("/api/teams/join", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -110,6 +129,11 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // Prompt Routes
+  // ============================================
+
+  // Get prompts for a team with optional filtering
   app.get("/api/prompts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -124,6 +148,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Not a member of this team" });
       }
       
+      // Parse filter parameters
       const search = req.query.search as string | undefined;
       const domainsParam = req.query.domains as string | undefined;
       const tasksParam = req.query.tasks as string | undefined;
@@ -139,10 +164,12 @@ export async function registerRoutes(
     }
   });
 
+  // Get a single prompt by ID (requires team membership)
   app.get("/api/prompts/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const prompt = await storage.getPrompt(req.params.id);
+      
       if (!prompt) {
         return res.status(404).json({ message: "Prompt not found" });
       }
@@ -159,6 +186,7 @@ export async function registerRoutes(
     }
   });
 
+  // Create a new prompt (requires team membership)
   app.post("/api/prompts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
@@ -174,6 +202,7 @@ export async function registerRoutes(
         return res.status(403).json({ message: "Not a member of this team" });
       }
       
+      // Build author display name
       const authorName = user?.firstName && user?.lastName 
         ? `${user.firstName} ${user.lastName}` 
         : user?.email || 'Anonymous';
@@ -195,10 +224,16 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // Comment Routes
+  // ============================================
+
+  // Get comments for a prompt (requires team membership)
   app.get("/api/prompts/:id/comments", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const prompt = await storage.getPrompt(req.params.id);
+      
       if (!prompt) {
         return res.status(404).json({ message: "Prompt not found" });
       }
@@ -216,6 +251,7 @@ export async function registerRoutes(
     }
   });
 
+  // Get comment count for a prompt
   app.get("/api/prompts/:id/comments/count", isAuthenticated, async (req: any, res) => {
     try {
       const count = await storage.getCommentCount(req.params.id);
@@ -226,11 +262,13 @@ export async function registerRoutes(
     }
   });
 
+  // Add a comment to a prompt (requires team membership)
   app.post("/api/prompts/:id/comments", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const user = await authStorage.getUser(userId);
       const prompt = await storage.getPrompt(req.params.id);
+      
       if (!prompt) {
         return res.status(404).json({ message: "Prompt not found" });
       }
@@ -261,10 +299,16 @@ export async function registerRoutes(
     }
   });
 
+  // ============================================
+  // Vote Routes
+  // ============================================
+
+  // Get vote counts and user's vote for a prompt
   app.get("/api/prompts/:id/votes", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const prompt = await storage.getPrompt(req.params.id);
+      
       if (!prompt) {
         return res.status(404).json({ message: "Prompt not found" });
       }
@@ -283,10 +327,12 @@ export async function registerRoutes(
     }
   });
 
+  // Cast or toggle a vote (clicking same vote removes it)
   app.post("/api/prompts/:id/votes", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const prompt = await storage.getPrompt(req.params.id);
+      
       if (!prompt) {
         return res.status(404).json({ message: "Prompt not found" });
       }
@@ -303,12 +349,14 @@ export async function registerRoutes(
       
       const existingVote = await storage.getVote(req.params.id, userId);
       
+      // Toggle behavior: clicking same vote removes it
       if (existingVote && existingVote.value === value) {
         await storage.removeVote(req.params.id, userId);
         const counts = await storage.getVoteCounts(req.params.id);
         return res.json({ ...counts, userVote: null });
       }
       
+      // Create or update vote
       await storage.upsertVote({
         promptId: req.params.id,
         userId,
