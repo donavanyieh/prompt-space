@@ -1,12 +1,13 @@
 import { 
-  prompts, comments, teams, teamMembers,
+  prompts, comments, teams, teamMembers, votes,
   type Prompt, type InsertPrompt, 
   type Comment, type InsertComment,
   type Team, type InsertTeam,
-  type TeamMember, type InsertTeamMember
+  type TeamMember, type InsertTeamMember,
+  type Vote, type InsertVote
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, or, ilike, inArray, desc } from "drizzle-orm";
+import { eq, and, or, ilike, inArray, desc, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
 export interface IStorage {
@@ -27,6 +28,11 @@ export interface IStorage {
   getComments(promptId: string): Promise<Comment[]>;
   getCommentCount(promptId: string): Promise<number>;
   createComment(comment: InsertComment): Promise<Comment>;
+  
+  getVote(promptId: string, userId: string): Promise<Vote | undefined>;
+  getVoteCounts(promptId: string): Promise<{ upvotes: number; downvotes: number }>;
+  upsertVote(vote: InsertVote): Promise<Vote>;
+  removeVote(promptId: string, userId: string): Promise<void>;
 }
 
 function generateJoinCode(): string {
@@ -152,6 +158,40 @@ export class DatabaseStorage implements IStorage {
       .values(insertComment)
       .returning();
     return comment;
+  }
+
+  async getVote(promptId: string, userId: string): Promise<Vote | undefined> {
+    const [vote] = await db.select().from(votes)
+      .where(and(eq(votes.promptId, promptId), eq(votes.userId, userId)));
+    return vote;
+  }
+
+  async getVoteCounts(promptId: string): Promise<{ upvotes: number; downvotes: number }> {
+    const allVotes = await db.select().from(votes).where(eq(votes.promptId, promptId));
+    const upvotes = allVotes.filter(v => v.value === 1).length;
+    const downvotes = allVotes.filter(v => v.value === -1).length;
+    return { upvotes, downvotes };
+  }
+
+  async upsertVote(insertVote: InsertVote): Promise<Vote> {
+    const existing = await this.getVote(insertVote.promptId, insertVote.userId);
+    
+    if (existing) {
+      const [updated] = await db.update(votes)
+        .set({ value: insertVote.value })
+        .where(eq(votes.id, existing.id))
+        .returning();
+      return updated;
+    }
+    
+    const [vote] = await db.insert(votes).values(insertVote).returning();
+    return vote;
+  }
+
+  async removeVote(promptId: string, userId: string): Promise<void> {
+    await db.delete(votes).where(
+      and(eq(votes.promptId, promptId), eq(votes.userId, userId))
+    );
   }
 }
 
