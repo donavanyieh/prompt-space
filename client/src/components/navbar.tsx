@@ -94,17 +94,17 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 border-b border-border/50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex h-14 items-center justify-between gap-4">
           {/* Left Section: Logo + Team Switcher */}
           <div className="flex items-center gap-4">
             <Link href="/">
               <div className="flex items-center gap-2 font-semibold" data-testid="link-home-logo">
-                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/25">
                   <Sparkles className="w-4 h-4 text-primary-foreground" />
                 </div>
-                <span className="hidden sm:inline">Prompt Party</span>
+                <span className="hidden sm:inline tracking-tight">Prompt Party</span>
               </div>
             </Link>
 
