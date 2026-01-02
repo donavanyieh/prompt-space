@@ -376,29 +376,27 @@ export default function PromptDetail() {
                   )}
                 </Button>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <pre className="font-mono text-sm whitespace-pre-wrap bg-muted/50 p-4 rounded-md" data-testid="text-prompt-content">
                   {prompt.prompt}
                 </pre>
+                
+                {prompt.notes && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h4 className="text-sm font-medium flex items-center gap-2 mb-2">
+                        <FileText className="w-4 h-4" />
+                        Notes
+                      </h4>
+                      <p className="text-sm text-foreground/90 whitespace-pre-wrap">
+                        {prompt.notes}
+                      </p>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
-
-            {/* Notes Card (if present) */}
-            {prompt.notes && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    Notes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-foreground/90 whitespace-pre-wrap">
-                    {prompt.notes}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
 
             {/* Comments Section */}
             <Card>
