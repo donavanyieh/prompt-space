@@ -261,5 +261,67 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/prompts/:id/votes", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const prompt = await storage.getPrompt(req.params.id);
+      if (!prompt) {
+        return res.status(404).json({ message: "Prompt not found" });
+      }
+      
+      const isMember = await storage.isUserInTeam(userId, prompt.teamId);
+      if (!isMember) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      const counts = await storage.getVoteCounts(req.params.id);
+      const userVote = await storage.getVote(req.params.id, userId);
+      res.json({ ...counts, userVote: userVote?.value || null });
+    } catch (error) {
+      console.error("Error fetching votes:", error);
+      res.status(500).json({ message: "Failed to fetch votes" });
+    }
+  });
+
+  app.post("/api/prompts/:id/votes", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const prompt = await storage.getPrompt(req.params.id);
+      if (!prompt) {
+        return res.status(404).json({ message: "Prompt not found" });
+      }
+      
+      const isMember = await storage.isUserInTeam(userId, prompt.teamId);
+      if (!isMember) {
+        return res.status(403).json({ message: "Not authorized" });
+      }
+      
+      const { value } = req.body;
+      if (value !== 1 && value !== -1) {
+        return res.status(400).json({ message: "Vote value must be 1 or -1" });
+      }
+      
+      const existingVote = await storage.getVote(req.params.id, userId);
+      
+      if (existingVote && existingVote.value === value) {
+        await storage.removeVote(req.params.id, userId);
+        const counts = await storage.getVoteCounts(req.params.id);
+        return res.json({ ...counts, userVote: null });
+      }
+      
+      await storage.upsertVote({
+        promptId: req.params.id,
+        userId,
+        value,
+      });
+      
+      const counts = await storage.getVoteCounts(req.params.id);
+      res.json({ ...counts, userVote: value });
+    } catch (error) {
+      console.error("Error voting:", error);
+      res.status(500).json({ message: "Failed to vote" });
+    }
+  });
+
   return httpServer;
 }
