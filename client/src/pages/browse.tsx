@@ -9,9 +9,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, MessageSquare, Calendar, User, Filter, X, ChevronDown, ChevronUp, Users } from "lucide-react";
-import { type Prompt, DOMAINS, TASKS, type Team } from "@shared/schema";
+import { type Prompt, DOMAINS, TASKS } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
+import { useTeam } from "@/contexts/team-context";
 import { useToast } from "@/hooks/use-toast";
 
 function PromptCard({ prompt }: { prompt: Prompt }) {
@@ -79,17 +80,11 @@ function PromptCardSkeleton() {
 export default function Browse() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { activeTeam, hasTeams, isLoading: teamsLoading } = useTeam();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-
-  const { data: teams, isLoading: teamsLoading } = useQuery<Team[]>({
-    queryKey: ["/api/teams/my"],
-    enabled: isAuthenticated,
-  });
-
-  const hasTeam = teams && teams.length > 0;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -105,6 +100,7 @@ export default function Browse() {
   }, [authLoading, isAuthenticated, toast]);
 
   const queryParams = new URLSearchParams();
+  if (activeTeam) queryParams.set("teamId", activeTeam.id);
   if (searchQuery) queryParams.set("search", searchQuery);
   if (selectedDomains.length > 0) queryParams.set("domains", selectedDomains.join(","));
   if (selectedTasks.length > 0) queryParams.set("tasks", selectedTasks.join(","));
@@ -113,8 +109,14 @@ export default function Browse() {
   const apiUrl = queryString ? `/api/prompts?${queryString}` : "/api/prompts";
 
   const { data: prompts, isLoading } = useQuery<Prompt[]>({
-    queryKey: [apiUrl],
-    enabled: isAuthenticated && hasTeam,
+    queryKey: ["/api/prompts", activeTeam?.id, searchQuery, selectedDomains.join(","), selectedTasks.join(",")],
+    queryFn: async () => {
+      if (!activeTeam) return [];
+      const response = await fetch(apiUrl, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch prompts");
+      return response.json();
+    },
+    enabled: isAuthenticated && !!activeTeam,
   });
 
   const toggleDomain = (domain: string) => {
@@ -153,7 +155,7 @@ export default function Browse() {
     return null;
   }
 
-  if (!hasTeam) {
+  if (!hasTeams) {
     return (
       <div className="min-h-screen py-8 px-4">
         <div className="max-w-lg mx-auto text-center">
@@ -180,7 +182,7 @@ export default function Browse() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Browse Prompts</h1>
           <p className="text-muted-foreground">
-            Discover and explore prompts shared by your team
+            Discover and explore prompts shared by {activeTeam?.name || "your team"}
           </p>
         </div>
 

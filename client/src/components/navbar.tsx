@@ -7,17 +7,68 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { Sparkles, Menu, X, LogIn, LogOut, Users } from "lucide-react";
+import { Sparkles, Menu, X, LogIn, LogOut, Users, Building2, Check, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
+import { useTeam } from "@/contexts/team-context";
 
 const navItems = [
   { label: "Home", href: "/" },
   { label: "Browse Prompts", href: "/browse" },
   { label: "Submit Prompt", href: "/submit" },
 ];
+
+function TeamSwitcher() {
+  const { teams, activeTeam, setActiveTeam, hasTeams } = useTeam();
+
+  if (!hasTeams) {
+    return (
+      <Link href="/team">
+        <Button variant="outline" size="sm" data-testid="button-setup-team-nav">
+          <Users className="w-4 h-4 mr-2" />
+          Join Team
+        </Button>
+      </Link>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2" data-testid="button-team-switcher">
+          <Building2 className="w-4 h-4" />
+          <span className="max-w-24 truncate">{activeTeam?.name || "Select Team"}</span>
+          <ChevronDown className="w-3 h-3 opacity-50" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuLabel>Switch Team</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {teams.map((team) => (
+          <DropdownMenuItem
+            key={team.id}
+            onClick={() => setActiveTeam(team)}
+            className="gap-2"
+            data-testid={`menu-item-team-${team.id}`}
+          >
+            <Check className={`w-4 h-4 ${activeTeam?.id === team.id ? "opacity-100" : "opacity-0"}`} />
+            <span className="truncate">{team.name}</span>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/team" className="gap-2">
+            <Users className="w-4 h-4" />
+            Manage Teams
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export function Navbar() {
   const [location] = useLocation();
@@ -38,14 +89,22 @@ export function Navbar() {
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex h-14 items-center justify-between gap-4">
-          <Link href="/">
-            <div className="flex items-center gap-2 font-semibold" data-testid="link-home-logo">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-primary-foreground" />
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <div className="flex items-center gap-2 font-semibold" data-testid="link-home-logo">
+                <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-primary-foreground" />
+                </div>
+                <span className="hidden sm:inline">Prompt Party</span>
               </div>
-              <span className="hidden sm:inline">Prompt Party</span>
-            </div>
-          </Link>
+            </Link>
+
+            {isAuthenticated && (
+              <div className="hidden md:block">
+                <TeamSwitcher />
+              </div>
+            )}
+          </div>
 
           {isAuthenticated && (
             <nav className="hidden md:flex items-center gap-1">
@@ -60,16 +119,6 @@ export function Navbar() {
                   </Button>
                 </Link>
               ))}
-              <Link href="/team">
-                <Button
-                  variant={location === "/team" ? "secondary" : "ghost"}
-                  size="sm"
-                  data-testid="link-nav-team"
-                >
-                  <Users className="w-4 h-4 mr-1" />
-                  Team
-                </Button>
-              </Link>
             </nav>
           )}
 
@@ -101,7 +150,7 @@ export function Navbar() {
                   <DropdownMenuItem asChild>
                     <Link href="/team">
                       <Users className="w-4 h-4 mr-2" />
-                      Manage Team
+                      Manage Teams
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -139,6 +188,9 @@ export function Navbar() {
         {mobileMenuOpen && isAuthenticated && (
           <nav className="md:hidden py-4 border-t">
             <div className="flex flex-col gap-1">
+              <div className="px-2 py-2">
+                <TeamSwitcher />
+              </div>
               {navItems.map((item) => (
                 <Link key={item.href} href={item.href}>
                   <Button
@@ -159,7 +211,7 @@ export function Navbar() {
                   data-testid="link-mobile-nav-team"
                 >
                   <Users className="w-4 h-4 mr-2" />
-                  Team
+                  Manage Teams
                 </Button>
               </Link>
             </div>

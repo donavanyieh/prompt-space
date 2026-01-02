@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,9 +26,10 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useTeam } from "@/contexts/team-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/auth-utils";
-import { DOMAINS, TASKS, type Team } from "@shared/schema";
+import { DOMAINS, TASKS } from "@shared/schema";
 import { Send, Eye, EyeOff, Users } from "lucide-react";
 import { useState } from "react";
 
@@ -46,14 +47,8 @@ export default function Submit() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { activeTeam, hasTeams, isLoading: teamsLoading } = useTeam();
   const [showPreview, setShowPreview] = useState(false);
-
-  const { data: teams, isLoading: teamsLoading } = useQuery<Team[]>({
-    queryKey: ["/api/teams/my"],
-    enabled: isAuthenticated,
-  });
-
-  const hasTeam = teams && teams.length > 0;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -81,14 +76,18 @@ export default function Submit() {
 
   const mutation = useMutation({
     mutationFn: async (data: FormValues) => {
-      const response = await apiRequest("POST", "/api/prompts", data);
+      if (!activeTeam) throw new Error("No active team selected");
+      const response = await apiRequest("POST", "/api/prompts", {
+        ...data,
+        teamId: activeTeam.id,
+      });
       return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
       toast({
         title: "Prompt submitted!",
-        description: "Your prompt has been shared with the team.",
+        description: `Your prompt has been shared with ${activeTeam?.name || "the team"}.`,
       });
       navigate(`/prompt/${data.id}`);
     },
@@ -124,7 +123,7 @@ export default function Submit() {
     return null;
   }
 
-  if (!hasTeam) {
+  if (!hasTeams) {
     return (
       <div className="min-h-screen py-8 px-4">
         <div className="max-w-lg mx-auto text-center">
@@ -151,7 +150,7 @@ export default function Submit() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Submit a Prompt</h1>
           <p className="text-muted-foreground">
-            Share your prompt with the organization to help others work more efficiently
+            Share your prompt with {activeTeam?.name || "your team"} to help others work more efficiently
           </p>
         </div>
 

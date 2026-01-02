@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,8 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -21,9 +27,10 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
+import { useTeam } from "@/contexts/team-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/auth-utils";
-import { Users, Plus, Key, Copy, Check, Crown } from "lucide-react";
+import { Users, Plus, Key, Copy, Check, Crown, Building2 } from "lucide-react";
 import type { Team } from "@shared/schema";
 
 const createTeamSchema = z.object({
@@ -37,25 +44,79 @@ const joinTeamSchema = z.object({
 type CreateTeamValues = z.infer<typeof createTeamSchema>;
 type JoinTeamValues = z.infer<typeof joinTeamSchema>;
 
-interface TeamMemberWithUser {
-  id: string;
-  teamId: string;
-  userId: string;
-  joinedAt: string;
-  user: {
-    id: string;
-    firstName: string | null;
-    lastName: string | null;
-    email: string | null;
-    profileImageUrl: string | null;
-  } | null;
+function TeamCard({ team, userId, onCopyCode }: { team: Team; userId: string; onCopyCode: (code: string) => void }) {
+  const isLeader = team.leaderId === userId;
+  const [copied, setCopied] = useState(false);
+  const { activeTeam, setActiveTeam } = useTeam();
+  const isActive = activeTeam?.id === team.id;
+
+  const handleCopy = async () => {
+    await onCopyCode(team.joinCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Card 
+      className={`hover-elevate cursor-pointer transition-colors ${isActive ? 'ring-2 ring-primary' : ''}`}
+      onClick={() => setActiveTeam(team)}
+      data-testid={`card-team-${team.id}`}
+    >
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-muted-foreground" />
+            {team.name}
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {isActive && (
+              <Badge variant="default" className="shrink-0">
+                Active
+              </Badge>
+            )}
+            {isLeader && (
+              <Badge variant="secondary" className="shrink-0">
+                <Crown className="w-3 h-3 mr-1" />
+                Leader
+              </Badge>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLeader ? (
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-2 flex-1">
+              <Key className="w-4 h-4 text-muted-foreground shrink-0" />
+              <code className="px-3 py-1.5 bg-muted rounded-md font-mono text-sm tracking-widest">
+                {team.joinCode}
+              </code>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleCopy}
+              data-testid={`button-copy-code-${team.id}`}
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Click to make this your active team
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function TeamPage() {
-  const [, navigate] = useLocation();
   const { toast } = useToast();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
-  const [copiedCode, setCopiedCode] = useState(false);
+  const { teams, isLoading: teamsLoading } = useTeam();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [joinDialogOpen, setJoinDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -69,18 +130,6 @@ export default function TeamPage() {
       }, 500);
     }
   }, [authLoading, isAuthenticated, toast]);
-
-  const { data: teams, isLoading: teamsLoading } = useQuery<Team[]>({
-    queryKey: ["/api/teams/my"],
-    enabled: isAuthenticated,
-  });
-
-  const currentTeam = teams?.[0];
-
-  const { data: members } = useQuery<TeamMemberWithUser[]>({
-    queryKey: ["/api/teams", currentTeam?.id, "members"],
-    enabled: !!currentTeam,
-  });
 
   const createForm = useForm<CreateTeamValues>({
     resolver: zodResolver(createTeamSchema),
@@ -104,6 +153,7 @@ export default function TeamPage() {
         description: "Share the join code with your teammates.",
       });
       createForm.reset();
+      setCreateDialogOpen(false);
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -131,6 +181,7 @@ export default function TeamPage() {
         description: `You're now a member of ${team.name}.`,
       });
       joinForm.reset();
+      setJoinDialogOpen(false);
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -146,12 +197,12 @@ export default function TeamPage() {
     },
   });
 
-  const copyJoinCode = async () => {
-    if (currentTeam?.joinCode) {
-      await navigator.clipboard.writeText(currentTeam.joinCode);
-      setCopiedCode(true);
-      setTimeout(() => setCopiedCode(false), 2000);
-    }
+  const copyToClipboard = async (code: string) => {
+    await navigator.clipboard.writeText(code);
+    toast({
+      title: "Copied!",
+      description: "Join code copied to clipboard.",
+    });
   };
 
   if (authLoading || teamsLoading) {
@@ -162,121 +213,35 @@ export default function TeamPage() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user) {
     return null;
-  }
-
-  if (currentTeam) {
-    return (
-      <div className="min-h-screen py-8 px-4">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold mb-2">{currentTeam.name}</h1>
-            <p className="text-muted-foreground">
-              Manage your team and share prompts together
-            </p>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Key className="w-5 h-5" />
-                Team Join Code
-              </CardTitle>
-              <CardDescription>
-                Share this code with teammates to let them join
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3">
-                <code className="flex-1 px-4 py-3 bg-muted rounded-md font-mono text-lg tracking-widest text-center">
-                  {currentTeam.joinCode}
-                </code>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={copyJoinCode}
-                  data-testid="button-copy-join-code"
-                >
-                  {copiedCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Team Members
-              </CardTitle>
-              <CardDescription>
-                {members?.length || 0} member{(members?.length || 0) !== 1 ? "s" : ""}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {members?.map((member) => (
-                  <div key={member.id} className="flex items-center gap-3 p-2 rounded-md hover-elevate">
-                    <Avatar className="h-9 w-9">
-                      <AvatarImage src={member.user?.profileImageUrl || undefined} />
-                      <AvatarFallback>
-                        {member.user?.firstName?.[0] || member.user?.email?.[0] || "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">
-                        {member.user?.firstName && member.user?.lastName
-                          ? `${member.user.firstName} ${member.user.lastName}`
-                          : member.user?.email || "Unknown"}
-                      </div>
-                      {member.user?.email && member.user?.firstName && (
-                        <div className="text-sm text-muted-foreground truncate">
-                          {member.user.email}
-                        </div>
-                      )}
-                    </div>
-                    {member.userId === currentTeam.leaderId && (
-                      <Badge variant="secondary" className="shrink-0">
-                        <Crown className="w-3 h-3 mr-1" />
-                        Leader
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
   }
 
   return (
     <div className="min-h-screen py-8 px-4">
-      <div className="max-w-xl mx-auto">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold mb-2">Join or Create a Team</h1>
-          <p className="text-muted-foreground">
-            You need to be part of a team to share and view prompts
-          </p>
-        </div>
-
-        <Tabs defaultValue="join" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="join" data-testid="tab-join-team">Join Team</TabsTrigger>
-            <TabsTrigger value="create" data-testid="tab-create-team">Create Team</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="join" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Join an Existing Team</CardTitle>
-                <CardDescription>
-                  Enter the 8-character join code shared by your team leader
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+      <div className="max-w-3xl mx-auto">
+        <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Your Teams</h1>
+            <p className="text-muted-foreground">
+              Manage your teams and collaborate with others
+            </p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <Dialog open={joinDialogOpen} onOpenChange={setJoinDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" data-testid="button-open-join-dialog">
+                  <Key className="w-4 h-4 mr-2" />
+                  Join Team
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Join an Existing Team</DialogTitle>
+                  <DialogDescription>
+                    Enter the 8-character join code shared by your team leader
+                  </DialogDescription>
+                </DialogHeader>
                 <Form {...joinForm}>
                   <form onSubmit={joinForm.handleSubmit((data) => joinMutation.mutate(data))} className="space-y-4">
                     <FormField
@@ -309,19 +274,23 @@ export default function TeamPage() {
                     </Button>
                   </form>
                 </Form>
-              </CardContent>
-            </Card>
-          </TabsContent>
+              </DialogContent>
+            </Dialog>
 
-          <TabsContent value="create" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Create a New Team</CardTitle>
-                <CardDescription>
-                  Start a new team and invite others with a unique join code
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+            <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button data-testid="button-open-create-dialog">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Team
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create a New Team</DialogTitle>
+                  <DialogDescription>
+                    Start a new team and invite others with a unique join code
+                  </DialogDescription>
+                </DialogHeader>
                 <Form {...createForm}>
                   <form onSubmit={createForm.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
                     <FormField
@@ -350,15 +319,47 @@ export default function TeamPage() {
                       disabled={createMutation.isPending}
                       data-testid="button-create-team"
                     >
-                      <Plus className="w-4 h-4 mr-2" />
                       {createMutation.isPending ? "Creating..." : "Create Team"}
                     </Button>
                   </form>
                 </Form>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        {teams.length === 0 ? (
+          <Card className="text-center py-12">
+            <CardContent>
+              <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h2 className="text-xl font-semibold mb-2">No Teams Yet</h2>
+              <p className="text-muted-foreground mb-6">
+                Create a new team or join an existing one to start sharing prompts
+              </p>
+              <div className="flex gap-3 justify-center flex-wrap">
+                <Button variant="outline" onClick={() => setJoinDialogOpen(true)}>
+                  <Key className="w-4 h-4 mr-2" />
+                  Join with Code
+                </Button>
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Team
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {teams.map((team) => (
+              <TeamCard 
+                key={team.id} 
+                team={team} 
+                userId={user.id}
+                onCopyCode={copyToClipboard}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
