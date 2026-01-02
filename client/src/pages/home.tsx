@@ -8,7 +8,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Search, Share2, Sparkles, ArrowRight, Code2, LogIn, Users } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -35,11 +34,6 @@ export default function Home() {
         <div className="blob blob-primary w-64 h-64 bottom-10 left-1/4" />
         
         <div className="relative max-w-5xl mx-auto text-center z-10">
-          <Badge className="mb-6 glass border-white/20 text-white/90">
-            <Sparkles className="w-3 h-3 mr-1" />
-            Enterprise Prompt Management
-          </Badge>
-          
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-white">
             Centralize Your Team's
             <span className="block mt-2 bg-gradient-to-r from-cyan-300 to-blue-200 bg-clip-text text-transparent">
