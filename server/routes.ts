@@ -153,6 +153,29 @@ export async function registerRoutes(
     }
   });
 
+  // Delete a team (leader only, cascade deletes all prompts, comments, votes, memberships)
+  app.delete("/api/teams/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const teamId = req.params.id;
+      
+      const team = await storage.getTeam(teamId);
+      if (!team) {
+        return res.status(404).json({ message: "Team not found" });
+      }
+      
+      if (team.leaderId !== userId) {
+        return res.status(403).json({ message: "Only the team leader can delete this team" });
+      }
+      
+      await storage.deleteTeamWithCascade(teamId);
+      res.json({ message: "Team deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting team:", error);
+      res.status(500).json({ message: "Failed to delete team" });
+    }
+  });
+
   // Remove a member from a team (leader only, cascade deletes all their data)
   app.delete("/api/teams/:teamId/members/:userId", isAuthenticated, async (req: any, res) => {
     try {

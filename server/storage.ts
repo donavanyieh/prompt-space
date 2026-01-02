@@ -27,6 +27,7 @@ export interface IStorage {
   getTeamByJoinCode(joinCode: string): Promise<Team | undefined>;
   createTeam(team: InsertTeam): Promise<Team>;
   getUserTeams(userId: string): Promise<Team[]>;
+  deleteTeamWithCascade(teamId: string): Promise<void>;
   
   // Team membership operations
   getTeamMembers(teamId: string): Promise<TeamMember[]>;
@@ -100,6 +101,30 @@ export class DatabaseStorage implements IStorage {
     
     const teamIds = memberships.map(m => m.teamId);
     return await db.select().from(teams).where(inArray(teams.id, teamIds));
+  }
+
+  async deleteTeamWithCascade(teamId: string): Promise<void> {
+    // Get all prompts in this team
+    const teamPrompts = await db.select({ id: prompts.id })
+      .from(prompts)
+      .where(eq(prompts.teamId, teamId));
+    
+    const promptIds = teamPrompts.map(p => p.id);
+    
+    if (promptIds.length > 0) {
+      // Delete all comments on team prompts
+      await db.delete(comments).where(inArray(comments.promptId, promptIds));
+      // Delete all votes on team prompts
+      await db.delete(votes).where(inArray(votes.promptId, promptIds));
+      // Delete all prompts
+      await db.delete(prompts).where(inArray(prompts.id, promptIds));
+    }
+    
+    // Delete all team memberships
+    await db.delete(teamMembers).where(eq(teamMembers.teamId, teamId));
+    
+    // Finally delete the team itself
+    await db.delete(teams).where(eq(teams.id, teamId));
   }
 
   // ============================================

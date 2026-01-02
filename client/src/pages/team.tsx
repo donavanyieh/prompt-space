@@ -47,7 +47,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTeam } from "@/contexts/team-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/auth-utils";
-import { Users, Plus, Key, Copy, Check, Crown, Building2, LogOut, UserMinus, Loader2 } from "lucide-react";
+import { Users, Plus, Key, Copy, Check, Crown, Building2, LogOut, UserMinus, Loader2, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQuery } from "@tanstack/react-query";
 import type { Team } from "@shared/schema";
@@ -252,13 +252,17 @@ function TeamCard({
   userId, 
   onCopyCode,
   onLeaveTeam,
-  isLeavePending
+  onDeleteTeam,
+  isLeavePending,
+  isDeletePending
 }: { 
   team: Team; 
   userId: string; 
   onCopyCode: (code: string) => void;
   onLeaveTeam: (teamId: string) => void;
+  onDeleteTeam: (teamId: string) => void;
   isLeavePending: boolean;
+  isDeletePending: boolean;
 }) {
   const isLeader = team.leaderId === userId;
   const [copied, setCopied] = useState(false);
@@ -321,7 +325,40 @@ function TeamCard({
             </p>
           )}
           
-          {!isLeader && (
+          {isLeader ? (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive"
+                  disabled={isDeletePending}
+                  data-testid={`button-delete-team-${team.id}`}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete {team.name}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete the team and all its data including prompts, comments, and votes. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => onDeleteTeam(team.id)}
+                    className="bg-destructive text-destructive-foreground"
+                    data-testid={`button-confirm-delete-team-${team.id}`}
+                  >
+                    Delete Team
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          ) : (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button
@@ -475,6 +512,35 @@ export default function TeamPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to leave team",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete team mutation (leader only)
+  const deleteMutation = useMutation({
+    mutationFn: async (teamId: string) => {
+      const response = await apiRequest("DELETE", `/api/teams/${teamId}`);
+      return response.json();
+    },
+    onSuccess: async () => {
+      // Invalidate teams - the context will auto-switch to another team if the active one was deleted
+      await queryClient.invalidateQueries({ queryKey: ["/api/teams/my"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
+      toast({
+        title: "Team deleted",
+        description: "The team and all its data have been permanently deleted.",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Session expired", description: "Please log in again.", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete team",
         variant: "destructive",
       });
     },
@@ -645,7 +711,9 @@ export default function TeamPage() {
                 userId={user.id}
                 onCopyCode={copyToClipboard}
                 onLeaveTeam={(teamId) => leaveMutation.mutate(teamId)}
+                onDeleteTeam={(teamId) => deleteMutation.mutate(teamId)}
                 isLeavePending={leaveMutation.isPending}
+                isDeletePending={deleteMutation.isPending}
               />
             ))}
           </div>
