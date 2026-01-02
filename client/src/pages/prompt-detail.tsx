@@ -337,12 +337,22 @@ export default function PromptDetail() {
     <div className="min-h-screen py-8 px-4">
       <div className="max-w-5xl mx-auto">
         {/* Back Navigation */}
-        <Link href="/browse">
-          <Button variant="ghost" size="sm" className="mb-6" data-testid="button-back-to-browse">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Browse
-          </Button>
-        </Link>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="mb-6" 
+          onClick={() => {
+            if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              window.location.href = "/browse";
+            }
+          }}
+          data-testid="button-back"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main Content Column */}
