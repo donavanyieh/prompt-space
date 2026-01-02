@@ -113,10 +113,15 @@ export async function registerRoutes(
   app.get("/api/prompts", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const teamId = await storage.getUserTeamId(userId);
+      const teamId = req.query.teamId as string | undefined;
       
       if (!teamId) {
         return res.json([]);
+      }
+      
+      const isMember = await storage.isUserInTeam(userId, teamId);
+      if (!isMember) {
+        return res.status(403).json({ message: "Not a member of this team" });
       }
       
       const search = req.query.search as string | undefined;
@@ -158,10 +163,15 @@ export async function registerRoutes(
     try {
       const userId = req.user.claims.sub;
       const user = await authStorage.getUser(userId);
-      const teamId = await storage.getUserTeamId(userId);
+      const teamId = req.body.teamId as string | undefined;
       
       if (!teamId) {
-        return res.status(400).json({ message: "You must be in a team to create prompts" });
+        return res.status(400).json({ message: "Team ID is required" });
+      }
+      
+      const isMember = await storage.isUserInTeam(userId, teamId);
+      if (!isMember) {
+        return res.status(403).json({ message: "Not a member of this team" });
       }
       
       const authorName = user?.firstName && user?.lastName 
