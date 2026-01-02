@@ -14,6 +14,20 @@
 - **Body:** 1rem (16px), font-weight 400, line-height 1.6
 - **Code/Prompts:** JetBrains Mono, 0.875rem (14px) for displaying prompt content
 
+### Color Palette (Sky Blue Theme)
+**Primary (High Hierarchy):** Deep sky blue (hsl 210 85% 45%) - buttons, links, active states
+**Accent:** Light sky blue (hsl 200 30% 92%) - subtle highlights, selected items
+**Secondary/Muted:** Subtle blue tints (hsl 200 15% 90-91%) - backgrounds, borders
+**Foreground:** Dark blue text (hsl 210 50% 15-20%) - headings and body text
+**Muted Foreground:** Lighter blue-gray (hsl 210 20% 40%) - secondary text, metadata
+
+**Dark Mode:**
+- Primary brightens to 55% lightness for visibility
+- Backgrounds shift to dark blue-gray (hsl 210 20% 7-16%)
+- Text lightens to 90% with subtle blue tint
+
+**Hierarchy Principle:** Darker blues = higher importance. Use primary blue sparingly for key actions and highlights.
+
 ### Layout System
 **Spacing Units:** Tailwind units of 2, 4, 6, 8, 12, 16
 - Consistent padding: p-6 for cards, p-8 for sections
