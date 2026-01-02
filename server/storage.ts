@@ -40,6 +40,7 @@ export interface IStorage {
   getPrompt(id: string): Promise<Prompt | undefined>;
   createPrompt(prompt: InsertPrompt): Promise<Prompt>;
   getUserPrompts(userId: string): Promise<Prompt[]>;
+  getUserLikedPrompts(userId: string): Promise<Prompt[]>;
   deletePrompt(id: string): Promise<void>;
   
   // Comment operations
@@ -230,6 +231,35 @@ export class DatabaseStorage implements IStorage {
       .from(prompts)
       .where(eq(prompts.authorId, userId))
       .orderBy(desc(prompts.createdAt));
+  }
+
+  async getUserLikedPrompts(userId: string): Promise<Prompt[]> {
+    // Get all prompt IDs the user has upvoted (value = 1)
+    const userUpvotes = await db.select({ promptId: votes.promptId })
+      .from(votes)
+      .where(and(eq(votes.userId, userId), eq(votes.value, 1)));
+    
+    if (userUpvotes.length === 0) {
+      return [];
+    }
+    
+    const promptIds = userUpvotes.map(v => v.promptId);
+    
+    // Get the prompts
+    const likedPrompts = await db.select()
+      .from(prompts)
+      .where(inArray(prompts.id, promptIds))
+      .orderBy(desc(prompts.createdAt));
+    
+    // Get teams the user is a member of
+    const userTeamMemberships = await db.select({ teamId: teamMembers.teamId })
+      .from(teamMembers)
+      .where(eq(teamMembers.userId, userId));
+    
+    const userTeamIds = new Set(userTeamMemberships.map(m => m.teamId));
+    
+    // Filter to only include prompts from teams the user is still a member of
+    return likedPrompts.filter(p => userTeamIds.has(p.teamId));
   }
 
   async deletePrompt(id: string): Promise<void> {

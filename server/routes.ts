@@ -202,6 +202,18 @@ export async function registerRoutes(
     }
   });
 
+  // Get all prompts the current user has upvoted (liked)
+  app.get("/api/prompts/liked", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const prompts = await storage.getUserLikedPrompts(userId);
+      res.json(prompts);
+    } catch (error) {
+      console.error("Error fetching liked prompts:", error);
+      res.status(500).json({ message: "Failed to fetch liked prompts" });
+    }
+  });
+
   // Get a single prompt by ID (requires team membership)
   app.get("/api/prompts/:id", isAuthenticated, async (req: any, res) => {
     try {

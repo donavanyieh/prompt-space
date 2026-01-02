@@ -21,7 +21,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar, Trash2, FileText, Users, ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
+import { Calendar, Trash2, FileText, ThumbsUp, ThumbsDown, MessageSquare, Heart } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type Prompt } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
@@ -127,12 +128,68 @@ function PromptCard({
   );
 }
 
+function LikedPromptCard({ prompt }: { prompt: Prompt }) {
+  const commentCountQuery = useQuery<number>({
+    queryKey: ["/api/prompts", prompt.id, "comments", "count"],
+  });
+
+  const votesQuery = useQuery<VoteData>({
+    queryKey: ["/api/prompts", prompt.id, "votes"],
+  });
+
+  const voteScore = (votesQuery.data?.upvotes ?? 0) - (votesQuery.data?.downvotes ?? 0);
+
+  return (
+    <Card className="h-full flex flex-col" data-testid={`card-liked-prompt-${prompt.id}`}>
+      <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
+        <Link href={`/prompt/${prompt.id}`} className="flex-1 min-w-0">
+          <h3 className="font-semibold text-base line-clamp-2 hover:underline cursor-pointer">
+            {prompt.title}
+          </h3>
+        </Link>
+        <Badge variant="secondary" className="shrink-0">
+          {prompt.domain}
+        </Badge>
+      </CardHeader>
+      <CardContent className="flex-1">
+        <pre className="font-mono text-sm text-muted-foreground line-clamp-6 whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
+          {prompt.prompt}
+        </pre>
+      </CardContent>
+      <CardFooter className="pt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1">
+          <ThumbsUp className="w-3 h-3" />
+          <span className="font-medium" data-testid={`text-vote-score-${prompt.id}`}>{voteScore}</span>
+          <ThumbsDown className="w-3 h-3" />
+        </div>
+        <span className="flex items-center gap-1" data-testid={`text-comment-count-${prompt.id}`}>
+          <MessageSquare className="w-3 h-3" />
+          {commentCountQuery.data ?? 0}
+        </span>
+        <Badge variant="outline" className="text-xs">
+          {prompt.task}
+        </Badge>
+        <span className="flex items-center gap-1">
+          <Calendar className="w-3 h-3" />
+          {formatDistanceToNow(new Date(prompt.createdAt), { addSuffix: true })}
+        </span>
+      </CardFooter>
+    </Card>
+  );
+}
+
 export default function MyPrompts() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [activeView, setActiveView] = useState<"mine" | "liked">("mine");
 
   const { data: prompts, isLoading } = useQuery<Prompt[]>({
     queryKey: ["/api/prompts/mine"],
+    enabled: isAuthenticated,
+  });
+
+  const { data: likedPrompts, isLoading: likedLoading } = useQuery<Prompt[]>({
+    queryKey: ["/api/prompts/liked"],
     enabled: isAuthenticated,
   });
 
@@ -211,17 +268,33 @@ export default function MyPrompts() {
     );
   }
 
+  const currentPrompts = activeView === "mine" ? prompts : likedPrompts;
+  const currentLoading = activeView === "mine" ? isLoading : likedLoading;
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex items-center gap-3 mb-6">
-        <FileText className="w-6 h-6" />
-        <h1 className="text-2xl font-bold">My Prompts</h1>
-        <Badge variant="secondary" className="ml-2">
-          {prompts?.length || 0}
-        </Badge>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          <FileText className="w-6 h-6" />
+          <h1 className="text-2xl font-bold">My Prompts</h1>
+        </div>
+        <Tabs value={activeView} onValueChange={(value) => setActiveView(value as "mine" | "liked")}>
+          <TabsList>
+            <TabsTrigger value="mine" className="gap-2" data-testid="tab-my-prompts">
+              <FileText className="w-4 h-4" />
+              Submitted
+              <Badge variant="secondary" className="ml-1">{prompts?.length || 0}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="liked" className="gap-2" data-testid="tab-liked-prompts">
+              <Heart className="w-4 h-4" />
+              Liked
+              <Badge variant="secondary" className="ml-1">{likedPrompts?.length || 0}</Badge>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
-      {isLoading ? (
+      {currentLoading ? (
         <div className="flex flex-col gap-4">
           {[...Array(3)].map((_, i) => (
             <Card key={i}>
@@ -237,23 +310,44 @@ export default function MyPrompts() {
             </Card>
           ))}
         </div>
-      ) : prompts && prompts.length > 0 ? (
+      ) : currentPrompts && currentPrompts.length > 0 ? (
         <div className="flex flex-col gap-4">
-          {prompts.map((prompt) => (
-            <PromptCard key={prompt.id} prompt={prompt} onDelete={handleDelete} />
-          ))}
+          {activeView === "mine" ? (
+            prompts?.map((prompt) => (
+              <PromptCard key={prompt.id} prompt={prompt} onDelete={handleDelete} />
+            ))
+          ) : (
+            likedPrompts?.map((prompt) => (
+              <LikedPromptCard key={prompt.id} prompt={prompt} />
+            ))
+          )}
         </div>
       ) : (
         <Card className="py-16">
           <div className="text-center">
-            <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No prompts yet</h3>
-            <p className="text-muted-foreground mb-4">
-              You haven't submitted any prompts yet. Start sharing your AI prompts with your team!
-            </p>
-            <Button asChild>
-              <Link href="/submit" data-testid="link-submit-first">Submit Your First Prompt</Link>
-            </Button>
+            {activeView === "mine" ? (
+              <>
+                <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No prompts yet</h3>
+                <p className="text-muted-foreground mb-4">
+                  You haven't submitted any prompts yet. Start sharing your AI prompts with your team!
+                </p>
+                <Button asChild>
+                  <Link href="/submit" data-testid="link-submit-first">Submit Your First Prompt</Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Heart className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No liked prompts</h3>
+                <p className="text-muted-foreground mb-4">
+                  You haven't upvoted any prompts yet. Browse prompts and give a thumbs up to the ones you find helpful!
+                </p>
+                <Button asChild>
+                  <Link href="/browse" data-testid="link-browse">Browse Prompts</Link>
+                </Button>
+              </>
+            )}
           </div>
         </Card>
       )}
