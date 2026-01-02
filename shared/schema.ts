@@ -1,11 +1,20 @@
+/**
+ * Database Schema and Type Definitions
+ * 
+ * This file defines the PostgreSQL database schema using Drizzle ORM,
+ * along with Zod validation schemas and TypeScript types for the application.
+ */
+
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
+// Re-export auth models (users, sessions)
 export * from "./models/auth";
 
+// Available domains for categorizing prompts
 export const DOMAINS = [
   "Engineering",
   "Marketing",
@@ -19,6 +28,7 @@ export const DOMAINS = [
   "Operations",
 ] as const;
 
+// Available task types for categorizing prompts
 export const TASKS = [
   "Content Writing",
   "Code Generation",
@@ -35,6 +45,7 @@ export const TASKS = [
 export type Domain = (typeof DOMAINS)[number];
 export type Task = (typeof TASKS)[number];
 
+// Teams table - organizations that share prompts
 export const teams = pgTable("teams", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
@@ -43,6 +54,7 @@ export const teams = pgTable("teams", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Team members junction table - tracks which users belong to which teams
 export const teamMembers = pgTable("team_members", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   teamId: varchar("team_id").notNull(),
@@ -50,6 +62,7 @@ export const teamMembers = pgTable("team_members", {
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
 });
 
+// Prompts table - the main content shared by team members
 export const prompts = pgTable("prompts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
@@ -63,6 +76,7 @@ export const prompts = pgTable("prompts", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Comments table - discussions on prompts
 export const comments = pgTable("comments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   promptId: varchar("prompt_id").notNull(),
@@ -72,14 +86,16 @@ export const comments = pgTable("comments", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Votes table - upvotes/downvotes on prompts
 export const votes = pgTable("votes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   promptId: varchar("prompt_id").notNull(),
   userId: varchar("user_id").notNull(),
-  value: integer("value").notNull(),
+  value: integer("value").notNull(), // 1 for upvote, -1 for downvote
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Define table relationships for Drizzle ORM
 export const teamsRelations = relations(teams, ({ many }) => ({
   members: many(teamMembers),
   prompts: many(prompts),
@@ -114,6 +130,7 @@ export const votesRelations = relations(votes, ({ one }) => ({
   }),
 }));
 
+// Zod validation schemas for insert operations (auto-generated fields omitted)
 export const insertTeamSchema = createInsertSchema(teams).omit({
   id: true,
   createdAt: true,
@@ -140,6 +157,7 @@ export const insertVoteSchema = createInsertSchema(votes).omit({
   createdAt: true,
 });
 
+// TypeScript types for database operations
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type Team = typeof teams.$inferSelect;
 
