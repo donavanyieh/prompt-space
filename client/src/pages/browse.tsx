@@ -71,7 +71,7 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
           </Badge>
         </CardHeader>
         <CardContent className="flex-1">
-          <pre className="font-mono text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
+          <pre className="font-mono text-sm text-muted-foreground line-clamp-6 whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
             {prompt.prompt}
           </pre>
         </CardContent>
@@ -395,13 +395,13 @@ export default function Browse() {
 
             {/* Content States */}
             {isLoading ? (
-              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-                {[...Array(6)].map((_, i) => (
+              <div className="flex flex-col gap-4">
+                {[...Array(3)].map((_, i) => (
                   <PromptCardSkeleton key={i} />
                 ))}
               </div>
             ) : prompts && prompts.length > 0 ? (
-              <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="flex flex-col gap-4">
                 {prompts.map((prompt) => (
                   <PromptCard key={prompt.id} prompt={prompt} />
                 ))}

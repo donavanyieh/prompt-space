@@ -68,7 +68,7 @@ function PromptCard({
           </Badge>
         </CardHeader>
         <CardContent className="flex-1">
-          <pre className="font-mono text-sm text-muted-foreground line-clamp-3 whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
+          <pre className="font-mono text-sm text-muted-foreground line-clamp-6 whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
             {prompt.prompt}
           </pre>
         </CardContent>
@@ -177,8 +177,8 @@ export default function MyPrompts() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <Skeleton className="h-10 w-48 mb-6" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
+        <div className="flex flex-col gap-4">
+          {[...Array(3)].map((_, i) => (
             <Card key={i}>
               <CardHeader>
                 <Skeleton className="h-6 w-3/4" />
@@ -222,8 +222,8 @@ export default function MyPrompts() {
       </div>
 
       {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
+        <div className="flex flex-col gap-4">
+          {[...Array(3)].map((_, i) => (
             <Card key={i}>
               <CardHeader>
                 <Skeleton className="h-6 w-3/4" />
@@ -238,7 +238,7 @@ export default function MyPrompts() {
           ))}
         </div>
       ) : prompts && prompts.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="flex flex-col gap-4">
           {prompts.map((prompt) => (
             <PromptCard key={prompt.id} prompt={prompt} onDelete={handleDelete} />
           ))}
