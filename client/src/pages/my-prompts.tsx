@@ -21,13 +21,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar, Trash2, FileText, Users } from "lucide-react";
+import { Calendar, Trash2, FileText, Users, ThumbsUp, ThumbsDown, MessageSquare } from "lucide-react";
 import { type Prompt } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/auth-utils";
+
+interface VoteData {
+  upvotes: number;
+  downvotes: number;
+  userVote: number | null;
+}
 
 function PromptCard({ 
   prompt, 
@@ -37,6 +43,16 @@ function PromptCard({
   onDelete: (id: string) => void;
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+  const commentCountQuery = useQuery<number>({
+    queryKey: ["/api/prompts", prompt.id, "comments", "count"],
+  });
+
+  const votesQuery = useQuery<VoteData>({
+    queryKey: ["/api/prompts", prompt.id, "votes"],
+  });
+
+  const voteScore = (votesQuery.data?.upvotes ?? 0) - (votesQuery.data?.downvotes ?? 0);
 
   return (
     <>
@@ -58,6 +74,15 @@ function PromptCard({
         </CardContent>
         <CardFooter className="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
           <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1">
+              <ThumbsUp className="w-3 h-3" />
+              <span className="font-medium" data-testid={`text-vote-score-${prompt.id}`}>{voteScore}</span>
+              <ThumbsDown className="w-3 h-3" />
+            </div>
+            <span className="flex items-center gap-1" data-testid={`text-comment-count-${prompt.id}`}>
+              <MessageSquare className="w-3 h-3" />
+              {commentCountQuery.data ?? 0}
+            </span>
             <Badge variant="outline" className="text-xs">
               {prompt.task}
             </Badge>
