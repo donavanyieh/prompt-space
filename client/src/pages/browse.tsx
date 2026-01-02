@@ -195,6 +195,18 @@ export default function Browse() {
     enabled: isAuthenticated && !!activeTeam,
   });
 
+  // Query for total prompts count (unfiltered)
+  const { data: totalPrompts } = useQuery<Prompt[]>({
+    queryKey: ["/api/prompts", activeTeam?.id, "total"],
+    queryFn: async () => {
+      if (!activeTeam) return [];
+      const response = await fetch(`/api/prompts?teamId=${activeTeam.id}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch total prompts");
+      return response.json();
+    },
+    enabled: isAuthenticated && !!activeTeam,
+  });
+
   // Filter toggle handlers
   const toggleDomain = (domain: string) => {
     setSelectedDomains((prev) =>
@@ -416,6 +428,11 @@ export default function Browse() {
             <p className="text-muted-foreground">
               Discover and explore prompts shared by {activeTeam?.name || "your team"}
             </p>
+            {!isLoading && prompts && totalPrompts && (
+              <p className="text-sm text-muted-foreground mt-2" data-testid="text-prompt-count">
+                Displaying {prompts.length} prompt{prompts.length !== 1 ? "s" : ""} out of {totalPrompts.length}
+              </p>
+            )}
           </div>
 
           {/* Active Filter Tags */}
