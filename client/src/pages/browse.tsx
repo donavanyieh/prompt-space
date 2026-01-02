@@ -15,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, MessageSquare, Calendar, User, Filter, X, ChevronDown, ChevronUp, Users, ThumbsUp, ThumbsDown, ArrowUpDown } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Search, MessageSquare, Calendar, User, Filter, X, ChevronLeft, ChevronRight, Users, ThumbsUp, ThumbsDown, ArrowUpDown } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { type Prompt, DOMAINS, TASKS } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
@@ -155,7 +156,7 @@ export default function Browse() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sortBy, setSortBy] = useState<"newest" | "comments" | "votes">("newest");
 
   // Redirect unauthenticated users
@@ -255,72 +256,96 @@ export default function Browse() {
     );
   }
 
+  const activeFilterCount = selectedDomains.length + selectedTasks.length + (searchQuery ? 1 : 0) + (sortBy !== "newest" ? 1 : 0);
+
   return (
-    <div className="min-h-screen">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Browse Prompts</h1>
-          <p className="text-muted-foreground">
-            Discover and explore prompts shared by {activeTeam?.name || "your team"}
-          </p>
-        </div>
+    <div className="min-h-screen flex">
+      {/* Collapsible Filters Sidebar */}
+      <aside 
+        className={`shrink-0 border-r bg-muted/30 transition-all duration-300 ease-in-out ${
+          sidebarOpen ? "w-64" : "w-12"
+        }`}
+      >
+        <div className="sticky top-0 h-screen flex flex-col">
+          {/* Sidebar Header with Toggle */}
+          <div className={`flex items-center border-b p-2 gap-2 ${sidebarOpen ? "justify-between" : "justify-center"}`}>
+            {sidebarOpen && (
+              <span className="font-semibold text-sm flex items-center gap-2">
+                <Filter className="w-4 h-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {activeFilterCount}
+                  </Badge>
+                )}
+              </span>
+            )}
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              data-testid="button-toggle-sidebar"
+            >
+              {sidebarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </Button>
+          </div>
 
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Filters Sidebar */}
-          <aside className="lg:w-64 shrink-0">
-            <div className="sticky top-20 space-y-4">
-              {/* Search Input */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search prompts..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                  data-testid="input-search"
-                />
-              </div>
-
-              {/* Sort Dropdown */}
-              <div>
-                <Label className="text-sm font-semibold mb-2 flex items-center gap-2">
-                  <ArrowUpDown className="w-4 h-4" />
-                  Sort By
-                </Label>
-                <Select value={sortBy} onValueChange={(value: "newest" | "comments" | "votes") => setSortBy(value)}>
-                  <SelectTrigger className="w-full" data-testid="select-sort">
-                    <SelectValue placeholder="Sort by..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest" data-testid="sort-newest">Newest First</SelectItem>
-                    <SelectItem value="comments" data-testid="sort-comments">Most Comments</SelectItem>
-                    <SelectItem value="votes" data-testid="sort-votes">Highest Score</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Mobile Filter Toggle */}
+          {/* Collapsed State - Just show filter icon with count */}
+          {!sidebarOpen && (
+            <div className="flex flex-col items-center gap-2 py-4">
               <Button
-                variant="outline"
-                className="w-full lg:hidden justify-between"
-                onClick={() => setShowFilters(!showFilters)}
+                size="icon"
+                variant="ghost"
+                onClick={() => setSidebarOpen(true)}
+                className="relative"
+                data-testid="button-expand-filters"
               >
-                <span className="flex items-center gap-2">
-                  <Filter className="w-4 h-4" />
-                  Filters
-                  {hasActiveFilters && (
-                    <Badge variant="secondary" className="ml-1">
-                      {selectedDomains.length + selectedTasks.length}
-                    </Badge>
-                  )}
-                </span>
-                {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                <Filter className="w-4 h-4" />
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
               </Button>
+            </div>
+          )}
 
-              {/* Filter Controls */}
-              <div className={`space-y-6 ${showFilters ? "block" : "hidden lg:block"}`}>
+          {/* Expanded State - Full Filter Controls */}
+          {sidebarOpen && (
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                {/* Search Input */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search prompts..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                    data-testid="input-search"
+                  />
+                </div>
+
+                {/* Sort Dropdown */}
+                <div>
+                  <Label className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <ArrowUpDown className="w-4 h-4" />
+                    Sort By
+                  </Label>
+                  <Select value={sortBy} onValueChange={(value: "newest" | "comments" | "votes") => setSortBy(value)}>
+                    <SelectTrigger className="w-full" data-testid="select-sort">
+                      <SelectValue placeholder="Sort by..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest" data-testid="sort-newest">Newest First</SelectItem>
+                      <SelectItem value="comments" data-testid="sort-comments">Most Comments</SelectItem>
+                      <SelectItem value="votes" data-testid="sort-votes">Highest Score</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Clear Filters Button */}
                 {hasActiveFilters && (
                   <Button
                     variant="ghost"
@@ -380,73 +405,83 @@ export default function Browse() {
                   </div>
                 </div>
               </div>
-            </div>
-          </aside>
-
-          {/* Prompt Grid */}
-          <main className="flex-1">
-            {/* Active Filter Tags */}
-            {hasActiveFilters && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {searchQuery && (
-                  <Badge variant="secondary" className="gap-1">
-                    Search: {searchQuery}
-                    <button onClick={() => setSearchQuery("")} className="ml-1">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                )}
-                {selectedDomains.map((domain) => (
-                  <Badge key={domain} variant="secondary" className="gap-1">
-                    {domain}
-                    <button onClick={() => toggleDomain(domain)} className="ml-1">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {selectedTasks.map((task) => (
-                  <Badge key={task} variant="secondary" className="gap-1">
-                    {task}
-                    <button onClick={() => toggleTask(task)} className="ml-1">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-
-            {/* Content States */}
-            {isLoading ? (
-              <div className="flex flex-col gap-4">
-                {[...Array(3)].map((_, i) => (
-                  <PromptCardSkeleton key={i} />
-                ))}
-              </div>
-            ) : prompts && prompts.length > 0 ? (
-              <div className="flex flex-col gap-4">
-                {prompts.map((prompt) => (
-                  <PromptCard key={prompt.id} prompt={prompt} />
-                ))}
-              </div>
-            ) : (
-              <Card className="p-12 text-center">
-                <div className="max-w-md mx-auto">
-                  <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No prompts found</h3>
-                  <p className="text-muted-foreground mb-6">
-                    {hasActiveFilters
-                      ? "Try adjusting your filters or search query"
-                      : "Be the first to share a prompt with your team"}
-                  </p>
-                  <Link href="/submit">
-                    <Button data-testid="button-submit-first-prompt">Submit a Prompt</Button>
-                  </Link>
-                </div>
-              </Card>
-            )}
-          </main>
+            </ScrollArea>
+          )}
         </div>
-      </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 min-w-0">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          {/* Page Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold mb-2">Browse Prompts</h1>
+            <p className="text-muted-foreground">
+              Discover and explore prompts shared by {activeTeam?.name || "your team"}
+            </p>
+          </div>
+
+          {/* Active Filter Tags */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {searchQuery && (
+                <Badge variant="secondary" className="gap-1">
+                  Search: {searchQuery}
+                  <button onClick={() => setSearchQuery("")} className="ml-1">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              )}
+              {selectedDomains.map((domain) => (
+                <Badge key={domain} variant="secondary" className="gap-1">
+                  {domain}
+                  <button onClick={() => toggleDomain(domain)} className="ml-1">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+              {selectedTasks.map((task) => (
+                <Badge key={task} variant="secondary" className="gap-1">
+                  {task}
+                  <button onClick={() => toggleTask(task)} className="ml-1">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          {/* Content States */}
+          {isLoading ? (
+            <div className="flex flex-col gap-4">
+              {[...Array(3)].map((_, i) => (
+                <PromptCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : prompts && prompts.length > 0 ? (
+            <div className="flex flex-col gap-4">
+              {prompts.map((prompt) => (
+                <PromptCard key={prompt.id} prompt={prompt} />
+              ))}
+            </div>
+          ) : (
+            <Card className="p-12 text-center">
+              <div className="max-w-md mx-auto">
+                <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No prompts found</h3>
+                <p className="text-muted-foreground mb-6">
+                  {hasActiveFilters
+                    ? "Try adjusting your filters or search query"
+                    : "Be the first to share a prompt with your team"}
+                </p>
+                <Link href="/submit">
+                  <Button data-testid="button-submit-first-prompt">Submit a Prompt</Button>
+                </Link>
+              </div>
+            </Card>
+          )}
+        </div>
+      </main>
     </div>
   );
 }
