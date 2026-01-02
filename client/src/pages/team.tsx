@@ -23,6 +23,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Form,
   FormControl,
   FormDescription,
@@ -36,7 +47,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTeam } from "@/contexts/team-context";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/auth-utils";
-import { Users, Plus, Key, Copy, Check, Crown, Building2 } from "lucide-react";
+import { Users, Plus, Key, Copy, Check, Crown, Building2, LogOut } from "lucide-react";
 import type { Team } from "@shared/schema";
 
 // Form validation schemas
@@ -54,7 +65,19 @@ type JoinTeamValues = z.infer<typeof joinTeamSchema>;
 /**
  * Individual team card showing team info and join code (for leaders).
  */
-function TeamCard({ team, userId, onCopyCode }: { team: Team; userId: string; onCopyCode: (code: string) => void }) {
+function TeamCard({ 
+  team, 
+  userId, 
+  onCopyCode,
+  onLeaveTeam,
+  isLeavePending
+}: { 
+  team: Team; 
+  userId: string; 
+  onCopyCode: (code: string) => void;
+  onLeaveTeam: (teamId: string) => void;
+  isLeavePending: boolean;
+}) {
   const isLeader = team.leaderId === userId;
   const [copied, setCopied] = useState(false);
   const { activeTeam, setActiveTeam } = useTeam();
@@ -94,28 +117,63 @@ function TeamCard({ team, userId, onCopyCode }: { team: Team; userId: string; on
         </div>
       </CardHeader>
       <CardContent>
-        {isLeader ? (
-          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between gap-4" onClick={(e) => e.stopPropagation()}>
+          {isLeader ? (
             <div className="flex items-center gap-2 flex-1">
               <Key className="w-4 h-4 text-muted-foreground shrink-0" />
               <code className="px-3 py-1.5 bg-muted rounded-md font-mono text-sm tracking-widest">
                 {team.joinCode}
               </code>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleCopy}
+                data-testid={`button-copy-code-${team.id}`}
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              </Button>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleCopy}
-              data-testid={`button-copy-code-${team.id}`}
-            >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            </Button>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Click to make this your active team
-          </p>
-        )}
+          ) : (
+            <p className="text-sm text-muted-foreground flex-1">
+              Click to make this your active team
+            </p>
+          )}
+          
+          {!isLeader && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive"
+                  disabled={isLeavePending}
+                  data-testid={`button-leave-team-${team.id}`}
+                >
+                  <LogOut className="w-4 h-4 mr-1" />
+                  Leave
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Leave {team.name}?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    You will no longer have access to this team's prompts. You can rejoin later with a new invite code.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => onLeaveTeam(team.id)}
+                    className="bg-destructive text-destructive-foreground"
+                    data-testid={`button-confirm-leave-${team.id}`}
+                  >
+                    Leave Team
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -206,6 +264,33 @@ export default function TeamPage() {
       toast({
         title: "Error",
         description: error.message || "Failed to join team",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Leave team mutation
+  const leaveMutation = useMutation({
+    mutationFn: async (teamId: string) => {
+      const response = await apiRequest("DELETE", `/api/teams/${teamId}/leave`);
+      return response.json();
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/teams/my"] });
+      toast({
+        title: "Left team",
+        description: "You've successfully left the team.",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Session expired", description: "Please log in again.", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to leave team",
         variant: "destructive",
       });
     },
@@ -375,6 +460,8 @@ export default function TeamPage() {
                 team={team} 
                 userId={user.id}
                 onCopyCode={copyToClipboard}
+                onLeaveTeam={(teamId) => leaveMutation.mutate(teamId)}
+                isLeavePending={leaveMutation.isPending}
               />
             ))}
           </div>
