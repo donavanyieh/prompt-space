@@ -248,6 +248,40 @@ export async function registerRoutes(
     }
   });
 
+  // Get all prompts submitted by the current user
+  app.get("/api/prompts/mine", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const prompts = await storage.getUserPrompts(userId);
+      res.json(prompts);
+    } catch (error) {
+      console.error("Error fetching user prompts:", error);
+      res.status(500).json({ message: "Failed to fetch your prompts" });
+    }
+  });
+
+  // Delete a prompt (only the author can delete)
+  app.delete("/api/prompts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const prompt = await storage.getPrompt(req.params.id);
+      
+      if (!prompt) {
+        return res.status(404).json({ message: "Prompt not found" });
+      }
+      
+      if (prompt.authorId !== userId) {
+        return res.status(403).json({ message: "You can only delete your own prompts" });
+      }
+      
+      await storage.deletePrompt(req.params.id);
+      res.json({ message: "Prompt deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting prompt:", error);
+      res.status(500).json({ message: "Failed to delete prompt" });
+    }
+  });
+
   // ============================================
   // Comment Routes
   // ============================================

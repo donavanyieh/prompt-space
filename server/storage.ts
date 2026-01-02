@@ -39,6 +39,8 @@ export interface IStorage {
   getPrompts(teamId: string, options?: { search?: string; domains?: string[]; tasks?: string[] }): Promise<Prompt[]>;
   getPrompt(id: string): Promise<Prompt | undefined>;
   createPrompt(prompt: InsertPrompt): Promise<Prompt>;
+  getUserPrompts(userId: string): Promise<Prompt[]>;
+  deletePrompt(id: string): Promise<void>;
   
   // Comment operations
   getComments(promptId: string): Promise<Comment[]>;
@@ -186,6 +188,22 @@ export class DatabaseStorage implements IStorage {
       .values(insertPrompt)
       .returning();
     return prompt;
+  }
+
+  async getUserPrompts(userId: string): Promise<Prompt[]> {
+    return await db.select()
+      .from(prompts)
+      .where(eq(prompts.authorId, userId))
+      .orderBy(desc(prompts.createdAt));
+  }
+
+  async deletePrompt(id: string): Promise<void> {
+    // Delete related comments first
+    await db.delete(comments).where(eq(comments.promptId, id));
+    // Delete related votes
+    await db.delete(votes).where(eq(votes.promptId, id));
+    // Delete the prompt
+    await db.delete(prompts).where(eq(prompts.id, id));
   }
 
   // ============================================

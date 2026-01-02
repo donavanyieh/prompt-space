@@ -66,8 +66,10 @@ All endpoints except `/api/login`, `/api/logout`, `/api/auth/user` require authe
 
 ### Prompts (team-scoped)
 - `GET /api/prompts` - List prompts for user's team
+- `GET /api/prompts/mine` - Get all prompts submitted by current user
 - `GET /api/prompts/:id` - Get single prompt (requires team membership)
 - `POST /api/prompts` - Create new prompt (requires team membership)
+- `DELETE /api/prompts/:id` - Delete prompt (author only, cascades to comments/votes)
 
 ### Comments
 - `GET /api/prompts/:id/comments` - Get comments (requires team membership)
