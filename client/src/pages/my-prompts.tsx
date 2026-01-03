@@ -21,9 +21,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar, Trash2, FileText, ThumbsUp, ThumbsDown, MessageSquare, Heart } from "lucide-react";
+import { Calendar, Trash2, FileText, ThumbsUp, ThumbsDown, MessageSquare, Heart, Users } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { type Prompt } from "@shared/schema";
+import { type Prompt, type Team } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -193,6 +193,36 @@ export default function MyPrompts() {
     enabled: isAuthenticated,
   });
 
+  const { data: teams } = useQuery<Team[]>({
+    queryKey: ["/api/teams/my"],
+    enabled: isAuthenticated,
+  });
+
+  // Group prompts by team
+  const promptsByTeam = prompts?.reduce((acc, prompt) => {
+    const teamId = prompt.teamId;
+    if (!acc[teamId]) {
+      acc[teamId] = [];
+    }
+    acc[teamId].push(prompt);
+    return acc;
+  }, {} as Record<string, Prompt[]>) ?? {};
+
+  // Group liked prompts by team
+  const likedByTeam = likedPrompts?.reduce((acc, prompt) => {
+    const teamId = prompt.teamId;
+    if (!acc[teamId]) {
+      acc[teamId] = [];
+    }
+    acc[teamId].push(prompt);
+    return acc;
+  }, {} as Record<string, Prompt[]>) ?? {};
+
+  // Helper to get team name
+  const getTeamName = (teamId: string) => {
+    return teams?.find(t => t.id === teamId)?.name ?? "Unknown Team";
+  };
+
   const deleteMutation = useMutation({
     mutationFn: async (promptId: string) => {
       const response = await apiRequest("DELETE", `/api/prompts/${promptId}`);
@@ -311,14 +341,36 @@ export default function MyPrompts() {
           ))}
         </div>
       ) : currentPrompts && currentPrompts.length > 0 ? (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           {activeView === "mine" ? (
-            prompts?.map((prompt) => (
-              <PromptCard key={prompt.id} prompt={prompt} onDelete={handleDelete} />
+            Object.entries(promptsByTeam).map(([teamId, teamPrompts]) => (
+              <div key={teamId} className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+                  <Users className="w-4 h-4" />
+                  <span data-testid={`text-team-name-${teamId}`}>{getTeamName(teamId)}</span>
+                  <Badge variant="outline" className="ml-auto">{teamPrompts.length}</Badge>
+                </div>
+                <div className="flex flex-col gap-4">
+                  {teamPrompts.map((prompt) => (
+                    <PromptCard key={prompt.id} prompt={prompt} onDelete={handleDelete} />
+                  ))}
+                </div>
+              </div>
             ))
           ) : (
-            likedPrompts?.map((prompt) => (
-              <LikedPromptCard key={prompt.id} prompt={prompt} />
+            Object.entries(likedByTeam).map(([teamId, teamPrompts]) => (
+              <div key={teamId} className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
+                  <Users className="w-4 h-4" />
+                  <span data-testid={`text-team-name-${teamId}`}>{getTeamName(teamId)}</span>
+                  <Badge variant="outline" className="ml-auto">{teamPrompts.length}</Badge>
+                </div>
+                <div className="flex flex-col gap-4">
+                  {teamPrompts.map((prompt) => (
+                    <LikedPromptCard key={prompt.id} prompt={prompt} />
+                  ))}
+                </div>
+              </div>
             ))
           )}
         </div>
