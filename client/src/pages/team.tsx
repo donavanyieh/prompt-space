@@ -177,8 +177,8 @@ function TeamMembersSection({
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
           ) : membersQuery.data && membersQuery.data.length > 0 ? (
-            <ScrollArea className="max-h-48 mt-2">
-              <div className="space-y-2 pr-3">
+            <ScrollArea className="max-h-72 mt-2">
+              <div className="space-y-2 pr-4">
                 {membersQuery.data.map((member) => {
                   const isSelf = member.userId === userId;
                   const isTeamLeader = member.userId === team.leaderId;
