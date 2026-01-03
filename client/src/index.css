@@ -359,52 +359,6 @@
     box-shadow: inset 0 1px 0 hsl(192 82% 62% / 0.1), 0 1px 2px hsl(218 88% 58% / 0.15);
   }
 
-  /* Floating animation keyframes for hero blobs */
-  @keyframes float-1 {
-    0%, 100% {
-      transform: translate(0, 0) scale(1);
-    }
-    25% {
-      transform: translate(20px, -15px) scale(1.02);
-    }
-    50% {
-      transform: translate(-10px, 20px) scale(0.98);
-    }
-    75% {
-      transform: translate(-20px, -10px) scale(1.01);
-    }
-  }
-
-  @keyframes float-2 {
-    0%, 100% {
-      transform: translate(0, 0) scale(1);
-    }
-    33% {
-      transform: translate(-25px, 15px) scale(1.03);
-    }
-    66% {
-      transform: translate(15px, -20px) scale(0.97);
-    }
-  }
-
-  @keyframes float-3 {
-    0%, 100% {
-      transform: translate(0, 0) scale(1);
-    }
-    20% {
-      transform: translate(15px, 10px) scale(0.99);
-    }
-    40% {
-      transform: translate(-15px, -15px) scale(1.02);
-    }
-    60% {
-      transform: translate(-10px, 20px) scale(0.98);
-    }
-    80% {
-      transform: translate(20px, -10px) scale(1.01);
-    }
-  }
-
   /* Decorative blob for hero backgrounds */
   .blob {
     position: absolute;
@@ -412,7 +366,6 @@
     filter: blur(60px);
     opacity: 0.4;
     pointer-events: none;
-    will-change: transform;
   }
 
   .blob-primary {
@@ -421,21 +374,6 @@
 
   .blob-accent {
     background: hsl(192 82% 55%);
-  }
-
-  /* Explicit animation classes for blobs */
-  .blob-float-1 {
-    animation: float-1 12s ease-in-out infinite;
-  }
-
-  .blob-float-2 {
-    animation: float-2 15s ease-in-out infinite;
-    animation-delay: -2s;
-  }
-
-  .blob-float-3 {
-    animation: float-3 18s ease-in-out infinite;
-    animation-delay: -5s;
   }
 
   .dark .blob {
