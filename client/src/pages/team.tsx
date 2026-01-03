@@ -50,7 +50,6 @@ import { isUnauthorizedError } from "@/lib/auth-utils";
 import { Users, Plus, Key, Copy, Check, Crown, Building2, LogOut, UserMinus, Loader2, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
 import type { Team } from "@shared/schema";
 
@@ -177,8 +176,8 @@ function TeamMembersSection({
               <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
             </div>
           ) : membersQuery.data && membersQuery.data.length > 0 ? (
-            <ScrollArea className="max-h-72 mt-2">
-              <div className="space-y-2 pr-4">
+            <div className="max-h-72 mt-2 overflow-y-auto pr-1">
+              <div className="space-y-2">
                 {membersQuery.data.map((member) => {
                   const isSelf = member.userId === userId;
                   const isTeamLeader = member.userId === team.leaderId;
@@ -256,7 +255,7 @@ function TeamMembersSection({
                   );
                 })}
               </div>
-            </ScrollArea>
+            </div>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-2">
               No members found
