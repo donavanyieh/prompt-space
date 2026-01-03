@@ -28,10 +28,10 @@ export default function Home() {
     <div className="min-h-screen">
       {/* Hero Section with Gradient Background */}
       <section className="relative py-24 px-4 overflow-hidden gradient-hero">
-        {/* Decorative blurred blobs */}
-        <div className="blob blob-primary w-96 h-96 -top-20 -left-20" />
-        <div className="blob blob-accent w-80 h-80 top-40 -right-16" />
-        <div className="blob blob-primary w-64 h-64 bottom-10 left-1/4" />
+        {/* Decorative blurred blobs with floating animation */}
+        <div className="blob blob-primary blob-float-1 w-96 h-96 -top-20 -left-20" />
+        <div className="blob blob-accent blob-float-2 w-80 h-80 top-40 -right-16" />
+        <div className="blob blob-primary blob-float-3 w-64 h-64 bottom-10 left-1/4" />
         
         <div className="relative max-w-5xl mx-auto text-center z-10">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 text-white">
