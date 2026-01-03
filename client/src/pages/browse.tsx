@@ -299,23 +299,12 @@ export default function Browse() {
             </Button>
           </div>
 
-          {/* Collapsed State - Just icons */}
-          {!sidebarExpanded && (
+          {/* Collapsed State - Show active filter count if any */}
+          {!sidebarExpanded && hasActiveFilters && (
             <div className="flex flex-col items-center gap-2 p-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarExpanded(true)}
-                className={hasActiveFilters ? "text-primary" : ""}
-                data-testid="button-expand-filters"
-              >
-                <Filter className="w-4 h-4" />
-              </Button>
-              {hasActiveFilters && (
-                <Badge variant="secondary" className="text-xs px-1.5">
-                  {selectedDomains.length + selectedTasks.length}
-                </Badge>
-              )}
+              <Badge variant="secondary" className="text-xs px-1.5">
+                {selectedDomains.length + selectedTasks.length}
+              </Badge>
             </div>
           )}
 
