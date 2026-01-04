@@ -9,9 +9,7 @@ export function registerAuthRoutes(app: Express): void {
     try {
       const userId = req.user.claims.sub;
       const user = await authStorage.getUser(userId);
-      // Include isDemo flag if this is a demo session
-      const isDemo = req.user.isDemo === true;
-      res.json({ ...user, isDemo });
+      res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });

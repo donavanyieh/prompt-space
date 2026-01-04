@@ -12,11 +12,6 @@ import { insertPromptSchema, insertCommentSchema, insertTeamSchema } from "@shar
 import { z } from "zod";
 import { isAuthenticated, authStorage } from "./replit_integrations/auth";
 
-// Helper to check if user is in demo mode
-function isDemoUser(req: any): boolean {
-  return req.user?.isDemo === true;
-}
-
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -97,9 +92,6 @@ export async function registerRoutes(
 
   // Create a new team (user becomes leader and first member)
   app.post("/api/teams", isAuthenticated, async (req: any, res) => {
-    if (isDemoUser(req)) {
-      return res.status(403).json({ message: "Demo users cannot create teams" });
-    }
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertTeamSchema.parse({ ...req.body, leaderId: userId });
@@ -116,9 +108,6 @@ export async function registerRoutes(
 
   // Join an existing team using a join code
   app.post("/api/teams/join", isAuthenticated, async (req: any, res) => {
-    if (isDemoUser(req)) {
-      return res.status(403).json({ message: "Demo users cannot join teams" });
-    }
     try {
       const userId = req.user.claims.sub;
       const { joinCode } = req.body;
@@ -142,9 +131,6 @@ export async function registerRoutes(
 
   // Leave a team (user removes themselves from the team)
   app.delete("/api/teams/:id/leave", isAuthenticated, async (req: any, res) => {
-    if (isDemoUser(req)) {
-      return res.status(403).json({ message: "Demo users cannot leave teams" });
-    }
     try {
       const userId = req.user.claims.sub;
       const teamId = req.params.id;
@@ -169,9 +155,6 @@ export async function registerRoutes(
 
   // Delete a team (leader only, cascade deletes all prompts, comments, votes, memberships)
   app.delete("/api/teams/:id", isAuthenticated, async (req: any, res) => {
-    if (isDemoUser(req)) {
-      return res.status(403).json({ message: "Demo users cannot delete teams" });
-    }
     try {
       const userId = req.user.claims.sub;
       const teamId = req.params.id;
@@ -195,9 +178,6 @@ export async function registerRoutes(
 
   // Remove a member from a team (leader only, cascade deletes all their data)
   app.delete("/api/teams/:teamId/members/:userId", isAuthenticated, async (req: any, res) => {
-    if (isDemoUser(req)) {
-      return res.status(403).json({ message: "Demo users cannot remove team members" });
-    }
     try {
       const currentUserId = req.user.claims.sub;
       const { teamId, userId: targetUserId } = req.params;
@@ -317,9 +297,6 @@ export async function registerRoutes(
 
   // Create a new prompt (requires team membership)
   app.post("/api/prompts", isAuthenticated, async (req: any, res) => {
-    if (isDemoUser(req)) {
-      return res.status(403).json({ message: "Demo users cannot submit prompts" });
-    }
     try {
       const userId = req.user.claims.sub;
       const user = await authStorage.getUser(userId);
@@ -358,9 +335,6 @@ export async function registerRoutes(
 
   // Delete a prompt (only the author can delete)
   app.delete("/api/prompts/:id", isAuthenticated, async (req: any, res) => {
-    if (isDemoUser(req)) {
-      return res.status(403).json({ message: "Demo users cannot delete prompts" });
-    }
     try {
       const userId = req.user.claims.sub;
       const prompt = await storage.getPrompt(req.params.id);
@@ -433,9 +407,6 @@ export async function registerRoutes(
 
   // Add a comment to a prompt (requires team membership)
   app.post("/api/prompts/:id/comments", isAuthenticated, async (req: any, res) => {
-    if (isDemoUser(req)) {
-      return res.status(403).json({ message: "Demo users cannot post comments" });
-    }
     try {
       const userId = req.user.claims.sub;
       const user = await authStorage.getUser(userId);
@@ -540,54 +511,6 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error voting:", error);
       res.status(500).json({ message: "Failed to vote" });
-    }
-  });
-
-  // ============================================
-  // Demo Login Route
-  // ============================================
-
-  // Demo login as Sarah Johnson (read-only demo mode, voting allowed)
-  app.post("/api/demo-login", async (req: any, res) => {
-    try {
-      const DEMO_USER_ID = "mock-user-002";
-      const DEMO_TEAM_ID = "demo-team-001";
-      
-      // Check if demo user exists
-      const demoUser = await authStorage.getUser(DEMO_USER_ID);
-      if (!demoUser) {
-        return res.status(404).json({ message: "Demo user not found. Please ensure demo data is seeded." });
-      }
-      
-      // Ensure demo user is in the DEMO team
-      const isMember = await storage.isUserInTeam(DEMO_USER_ID, DEMO_TEAM_ID);
-      if (!isMember) {
-        await storage.addTeamMember({ teamId: DEMO_TEAM_ID, userId: DEMO_USER_ID });
-      }
-      
-      // Create a demo session (mimics Replit Auth session structure)
-      // Demo sessions expire after 30 minutes for security
-      const demoExpiry = Math.floor(Date.now() / 1000) + (30 * 60); // 30 minutes
-      req.login({
-        claims: {
-          sub: DEMO_USER_ID,
-          email: demoUser.email,
-          first_name: demoUser.firstName,
-          last_name: demoUser.lastName,
-          profile_image_url: demoUser.profileImageUrl,
-        },
-        expires_at: demoExpiry,
-        isDemo: true, // Flag to identify demo sessions
-      }, (err: any) => {
-        if (err) {
-          console.error("Demo login error:", err);
-          return res.status(500).json({ message: "Failed to create demo session" });
-        }
-        res.json({ success: true, user: demoUser });
-      });
-    } catch (error) {
-      console.error("Error in demo login:", error);
-      res.status(500).json({ message: "Failed to start demo session" });
     }
   });
 
