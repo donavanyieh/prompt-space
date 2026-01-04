@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { Sparkles, Menu, X, LogIn, LogOut, Users, Building2, Check, ChevronDown } from "lucide-react";
+import { Globe, Menu, X, LogIn, LogOut, Users, Building2, Check, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
@@ -102,9 +102,9 @@ export function Navbar() {
             <Link href="/">
               <div className="flex items-center gap-2 font-semibold" data-testid="link-home-logo">
                 <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-md shadow-primary/25">
-                  <Sparkles className="w-4 h-4 text-primary-foreground" />
+                  <Globe className="w-4 h-4 text-primary-foreground" />
                 </div>
-                <span className="hidden sm:inline tracking-tight">Prompt Party</span>
+                <span className="hidden sm:inline tracking-tight">PromptSpace</span>
               </div>
             </Link>
 

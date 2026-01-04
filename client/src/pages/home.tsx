@@ -90,7 +90,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <h2 className="text-2xl md:text-3xl font-semibold mb-4 tracking-tight">
-              How Prompt Party Works
+              How PromptSpace Works
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
               A simple workflow to capture and share institutional knowledge
