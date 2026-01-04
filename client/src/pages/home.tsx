@@ -6,8 +6,19 @@
  */
 
 import { Link } from "wouter";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Search, Share2, Sparkles, ArrowRight, Code2, LogIn, Users, Play } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -18,6 +29,7 @@ import type { Team } from "@shared/schema";
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const [showDemoDialog, setShowDemoDialog] = useState(false);
   
   // Fetch user's teams to determine appropriate CTA
   const { data: teams } = useQuery<Team[]>({
@@ -39,6 +51,11 @@ export default function Home() {
       setLocation("/browse");
     },
   });
+
+  const handleDemoConfirm = () => {
+    setShowDemoDialog(false);
+    demoLoginMutation.mutate();
+  };
 
   return (
     <div className="min-h-screen">
@@ -101,7 +118,7 @@ export default function Home() {
                   size="lg" 
                   variant="outline" 
                   className="border-white/30 text-white bg-white/10 backdrop-blur-sm"
-                  onClick={() => demoLoginMutation.mutate()}
+                  onClick={() => setShowDemoDialog(true)}
                   disabled={demoLoginMutation.isPending}
                   data-testid="button-demo-sandbox"
                 >
@@ -207,6 +224,28 @@ export default function Home() {
           )}
         </div>
       </section>
+
+      {/* Demo Sandbox Confirmation Dialog */}
+      <AlertDialog open={showDemoDialog} onOpenChange={setShowDemoDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Demo Account Access</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to access a demo account, which grants limited privileges. 
+              You will not be able to post or comment. Please sign out thereafter.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-demo-cancel">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDemoConfirm}
+              data-testid="button-demo-confirm"
+            >
+              Continue to Demo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
