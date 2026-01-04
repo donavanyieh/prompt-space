@@ -4,7 +4,7 @@
  * Displays all prompts submitted by the current user with the ability to delete them.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -182,6 +182,17 @@ export default function MyPrompts() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [activeView, setActiveView] = useState<"mine" | "liked">("mine");
+
+  // Handle intentional logout - redirect silently to home
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      const intentionalLogout = sessionStorage.getItem("intentional_logout");
+      if (intentionalLogout) {
+        sessionStorage.removeItem("intentional_logout");
+        window.location.href = "/";
+      }
+    }
+  }, [authLoading, isAuthenticated]);
 
   const { data: prompts, isLoading } = useQuery<Prompt[]>({
     queryKey: ["/api/prompts/mine"],

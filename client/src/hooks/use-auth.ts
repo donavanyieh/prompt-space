@@ -18,6 +18,8 @@ async function fetchUser(): Promise<User | null> {
 }
 
 async function logout(): Promise<void> {
+  // Set flag to indicate intentional logout - prevents error toasts on protected pages
+  sessionStorage.setItem("intentional_logout", "true");
   window.location.href = "/api/logout";
 }
 

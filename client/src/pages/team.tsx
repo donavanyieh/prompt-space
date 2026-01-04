@@ -433,6 +433,13 @@ export default function TeamPage() {
   // Redirect unauthenticated users
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
+      // Check if user just logged out intentionally - redirect silently to home
+      const intentionalLogout = sessionStorage.getItem("intentional_logout");
+      if (intentionalLogout) {
+        sessionStorage.removeItem("intentional_logout");
+        window.location.href = "/";
+        return;
+      }
       toast({
         title: "Please log in",
         description: "You need to be logged in to manage teams.",
