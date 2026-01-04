@@ -238,7 +238,10 @@ export default function Home() {
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="button-demo-cancel">Cancel</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={handleDemoConfirm}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDemoConfirm();
+              }}
               data-testid="button-demo-confirm"
             >
               Continue to Demo
