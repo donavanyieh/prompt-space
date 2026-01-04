@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { Globe, Menu, X, LogIn, LogOut, Users, Building2, Check, ChevronDown } from "lucide-react";
+import { Globe, Menu, X, LogIn, LogOut, Users, Building2, Check, ChevronDown, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
@@ -80,7 +80,16 @@ function TeamSwitcher() {
 export function Navbar() {
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const { user, isAuthenticated, isLoading, logout } = useAuth();
+
+  const handleLogout = () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    setTimeout(() => {
+      logout();
+    }, 1500);
+  };
 
   // Generate user initials for avatar fallback
   const getInitials = () => {
@@ -94,7 +103,16 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 border-b border-border/50">
+    <>
+      {isSigningOut && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm" data-testid="overlay-signing-out">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-lg font-medium" data-testid="text-signing-out">Signing out...</p>
+          </div>
+        </div>
+      )}
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 border-b border-border/50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex h-14 items-center justify-between gap-4">
           {/* Left Section: Logo + Team Switcher */}
@@ -165,7 +183,7 @@ export function Navbar() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => logout()} data-testid="button-logout">
+                  <DropdownMenuItem onClick={handleLogout} data-testid="button-logout">
                     <LogOut className="w-4 h-4 mr-2" />
                     Log out
                   </DropdownMenuItem>
@@ -220,6 +238,7 @@ export function Navbar() {
           </nav>
         )}
       </div>
-    </header>
+      </header>
+    </>
   );
 }
