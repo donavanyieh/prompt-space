@@ -566,7 +566,8 @@ export async function registerRoutes(
       }
       
       // Create a demo session (mimics Replit Auth session structure)
-      const demoExpiry = Math.floor(Date.now() / 1000) + (24 * 60 * 60); // 24 hours
+      // Demo sessions expire after 30 minutes for security
+      const demoExpiry = Math.floor(Date.now() / 1000) + (30 * 60); // 30 minutes
       req.login({
         claims: {
           sub: DEMO_USER_ID,

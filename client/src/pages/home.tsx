@@ -232,7 +232,7 @@ export default function Home() {
             <AlertDialogTitle>Demo Account Access</AlertDialogTitle>
             <AlertDialogDescription>
               You are about to access a demo account, which grants limited privileges. 
-              You will not be able to post or comment. Please sign out thereafter.
+              You will not be able to post or comment. Please sign out after you are done.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
