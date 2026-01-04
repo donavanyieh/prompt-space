@@ -8,13 +8,16 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Search, Share2, Sparkles, ArrowRight, Code2, LogIn, Users } from "lucide-react";
+import { Search, Share2, Sparkles, ArrowRight, Code2, LogIn, Users, Play } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 import type { Team } from "@shared/schema";
 
 export default function Home() {
   const { isAuthenticated, isLoading } = useAuth();
+  const [, setLocation] = useLocation();
   
   // Fetch user's teams to determine appropriate CTA
   const { data: teams } = useQuery<Team[]>({
@@ -23,6 +26,19 @@ export default function Home() {
   });
 
   const hasTeam = teams && teams.length > 0;
+
+  // Demo login mutation
+  const demoLoginMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/demo-login");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/teams/my"] });
+      setLocation("/browse");
+    },
+  });
 
   return (
     <div className="min-h-screen">
@@ -73,13 +89,26 @@ export default function Home() {
                 </Link>
               )
             ) : (
-              <Button size="lg" className="glow-button" asChild data-testid="button-login-hero">
-                <a href="/api/login">
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Log In to Get Started
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </a>
-              </Button>
+              <>
+                <Button size="lg" className="glow-button" asChild data-testid="button-login-hero">
+                  <a href="/api/login">
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Log In to Get Started
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </a>
+                </Button>
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="border-white/30 text-white bg-white/10 backdrop-blur-sm"
+                  onClick={() => demoLoginMutation.mutate()}
+                  disabled={demoLoginMutation.isPending}
+                  data-testid="button-demo-sandbox"
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  {demoLoginMutation.isPending ? "Loading..." : "Demo Sandbox"}
+                </Button>
+              </>
             )}
           </div>
         </div>
