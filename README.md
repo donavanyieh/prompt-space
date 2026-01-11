@@ -1,5 +1,4 @@
 # Source code for prompt space
-<br><br>
 ## Setup
 If you want to access locally, just make sure you have docker installed and run
 ```bash
