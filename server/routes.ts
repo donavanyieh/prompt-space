@@ -10,7 +10,7 @@ import { type Server } from "http";
 import { storage } from "./storage";
 import { insertPromptSchema, insertCommentSchema, insertTeamSchema } from "@shared/schema";
 import { z } from "zod";
-import { isAuthenticated, authStorage } from "./replit_integrations/auth";
+import { isAuthenticated, authStorage } from "./auth";
 
 export async function registerRoutes(
   httpServer: Server,

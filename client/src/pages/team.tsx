@@ -178,7 +178,25 @@ function TeamMembersSection({
           ) : membersQuery.data && membersQuery.data.length > 0 ? (
             <div className="max-h-72 mt-2 overflow-y-auto pr-1">
               <div className="space-y-2">
-                {membersQuery.data.map((member) => {
+                {[...membersQuery.data]
+                  .sort((a, b) => {
+                    const aIsLeader = a.userId === team.leaderId;
+                    const bIsLeader = b.userId === team.leaderId;
+                    const aIsSelf = a.userId === userId;
+                    const bIsSelf = b.userId === userId;
+                    
+                    // Team leader always first
+                    if (aIsLeader) return -1;
+                    if (bIsLeader) return 1;
+                    
+                    // Current user (you) always second
+                    if (aIsSelf) return -1;
+                    if (bIsSelf) return 1;
+                    
+                    // Others maintain their order
+                    return 0;
+                  })
+                  .map((member) => {
                   const isSelf = member.userId === userId;
                   const isTeamLeader = member.userId === team.leaderId;
                   
@@ -344,7 +362,7 @@ function TeamCard({
             </div>
           ) : (
             <p className="text-sm text-muted-foreground flex-1">
-              Click to make this your active team
+              Ask your Team Leader for join code
             </p>
           )}
           

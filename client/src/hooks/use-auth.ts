@@ -17,12 +17,6 @@ async function fetchUser(): Promise<User | null> {
   return response.json();
 }
 
-async function logout(): Promise<void> {
-  // Set flag to indicate intentional logout - prevents error toasts on protected pages
-  sessionStorage.setItem("intentional_logout", "true");
-  window.location.href = "/api/logout";
-}
-
 export function useAuth() {
   const queryClient = useQueryClient();
   const { data: user, isLoading } = useQuery<User | null>({
@@ -33,9 +27,16 @@ export function useAuth() {
   });
 
   const logoutMutation = useMutation({
-    mutationFn: logout,
-    onSuccess: () => {
+    mutationFn: async () => {
+      // Set flag to indicate intentional logout - prevents error toasts on protected pages
+      sessionStorage.setItem("intentional_logout", "true");
+      
+      // Clear React Query cache BEFORE redirecting
       queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.clear(); // Clear all cached data
+      
+      // Now redirect to logout endpoint
+      window.location.href = "/api/logout";
     },
   });
 

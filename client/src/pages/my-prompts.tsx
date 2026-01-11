@@ -69,7 +69,7 @@ function PromptCard({
           </Badge>
         </CardHeader>
         <CardContent className="flex-1">
-          <pre className="font-mono text-sm text-muted-foreground line-clamp-6 whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
+          <pre className="font-mono text-sm text-muted-foreground max-h-32 overflow-y-auto whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
             {prompt.prompt}
           </pre>
         </CardContent>
@@ -152,7 +152,7 @@ function LikedPromptCard({ prompt }: { prompt: Prompt }) {
         </Badge>
       </CardHeader>
       <CardContent className="flex-1">
-        <pre className="font-mono text-sm text-muted-foreground line-clamp-6 whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
+        <pre className="font-mono text-sm text-muted-foreground max-h-32 overflow-y-auto whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
           {prompt.prompt}
         </pre>
       </CardContent>
@@ -193,6 +193,14 @@ export default function MyPrompts() {
       }
     }
   }, [authLoading, isAuthenticated]);
+
+  // Auto-refresh data on page visit
+  useEffect(() => {
+    if (isAuthenticated) {
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/mine"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/liked"] });
+    }
+  }, [isAuthenticated]);
 
   const { data: prompts, isLoading } = useQuery<Prompt[]>({
     queryKey: ["/api/prompts/mine"],

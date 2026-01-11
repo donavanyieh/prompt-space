@@ -73,7 +73,7 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
           </Badge>
         </CardHeader>
         <CardContent className="flex-1">
-          <pre className="font-mono text-sm text-muted-foreground line-clamp-6 whitespace-pre-wrap bg-muted/30 p-3 rounded-md border border-border/50">
+          <pre className="font-mono text-sm text-muted-foreground max-h-32 overflow-y-auto whitespace-pre-wrap bg-muted/30 p-3 rounded-md border border-border/50">
             {prompt.prompt}
           </pre>
         </CardContent>

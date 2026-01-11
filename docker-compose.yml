@@ -1,0 +1,45 @@
+# ============================================================================
+# Docker Compose Configuration for Prompt Space
+# ============================================================================
+# This file makes it easy to run the application locally with Docker
+# Usage: docker-compose up --build
+
+version: '3.8'
+
+services:
+  app:
+    # Build configuration
+    build:
+      context: .
+      dockerfile: Dockerfile
+    
+    # Container name
+    container_name: prompt-space
+    
+    # Port mapping (host:container)
+    ports:
+      - "5000:5000"
+    
+    # Environment variables
+    env_file:
+      - .env
+    
+    # Restart policy
+    restart: unless-stopped
+    
+    # Logging configuration
+    # logging:
+    #   driver: "json-file"
+    #   options:
+    #     max-size: "10m"
+    #     max-file: "3"
+
+# ============================================================================
+# Notes:
+# ============================================================================
+# 1. Make sure .env file exists with all required variables
+# 2. The app connects to external Supabase database
+# 3. No local database container is needed
+# 4. Run with: docker-compose up --build
+# 5. Stop with: docker-compose down
+# 6. View logs: docker-compose logs -f
