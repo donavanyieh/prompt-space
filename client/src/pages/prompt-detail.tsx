@@ -76,8 +76,10 @@ import {
   Edit,
   History,
   AlertCircle,
-  Clock
+  Clock,
+  GitCompare
 } from "lucide-react";
+import { CompareVersions } from "@/components/compare-versions";
 
 interface VoteData {
   upvotes: number;
@@ -272,6 +274,7 @@ export default function PromptDetail() {
   const promptId = params?.id;
   const [copied, setCopied] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [compareVersionsOpen, setCompareVersionsOpen] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -549,6 +552,17 @@ export default function PromptDetail() {
                 </Select>
               </div>
 
+              {versions && versions.length >= 2 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCompareVersionsOpen(true)}
+                >
+                  <GitCompare className="w-4 h-4 mr-2" />
+                  Compare Versions
+                </Button>
+              )}
+
               {isAuthor && !isViewingOldVersion && (
                 <Button 
                   variant="outline" 
@@ -785,6 +799,16 @@ export default function PromptDetail() {
             </Button>
           </div>
         </div>
+
+        {/* Compare Versions Sheet */}
+        {versions && prompt && (
+          <CompareVersions
+            open={compareVersionsOpen}
+            onOpenChange={setCompareVersionsOpen}
+            versions={versions}
+            currentVersion={prompt.currentVersion}
+          />
+        )}
 
         {/* Edit Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
