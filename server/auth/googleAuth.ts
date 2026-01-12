@@ -4,6 +4,14 @@
  * Handles Google OAuth 2.0 / OpenID Connect authentication using Passport.js
  * and openid-client. Provides session management, token refresh, and
  * multi-domain strategy support.
+ * 
+ * ⚠️ SECURITY WARNING:
+ * This module handles sensitive OAuth credentials. Ensure:
+ * - GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are never committed to version control
+ * - SESSION_SECRET is a cryptographically secure random string
+ * - All credentials are stored in .env file (already in .gitignore)
+ * - Credentials are rotated regularly in production
+ * - HTTPS is used in production environments
  */
 
 import * as client from "openid-client";
@@ -130,7 +138,7 @@ export function getSession(): RequestHandler {
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      // secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production",
       maxAge: SESSION_TTL,
     },
   });

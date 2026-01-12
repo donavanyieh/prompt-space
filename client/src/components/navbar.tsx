@@ -22,9 +22,14 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/hooks/use-auth";
 import { useTeam } from "@/contexts/team-context";
 
-// Navigation items shown when authenticated
-const navItems = [
+// Navigation items available to everyone (public)
+const publicNavItems = [
   { label: "Home", href: "/" },
+  { label: "Contact", href: "/contact" },
+];
+
+// Navigation items only for authenticated users
+const authenticatedNavItems = [
   { label: "Browse Prompts", href: "/browse" },
   { label: "Submit Prompt", href: "/submit" },
   { label: "My Prompts", href: "/my-prompts" },
@@ -102,6 +107,11 @@ export function Navbar() {
     return "U";
   };
 
+  // Combine navigation items based on authentication state
+  const navItems = isAuthenticated 
+    ? [...publicNavItems, ...authenticatedNavItems]
+    : publicNavItems;
+
   return (
     <>
       {isSigningOut && (
@@ -133,7 +143,7 @@ export function Navbar() {
             )}
           </div>
 
-          {/* Center Section: Navigation Links (Desktop) */}
+          {/* Center Section: Navigation Links (Desktop - Authenticated Only) */}
           {isAuthenticated && (
             <nav className="hidden md:flex items-center gap-1">
               {navItems.map((item) => (
@@ -150,8 +160,25 @@ export function Navbar() {
             </nav>
           )}
 
-          {/* Right Section: Theme Toggle + User Menu + Mobile Menu Toggle */}
+          {/* Right Section: Public Nav (if unauthenticated) + Theme Toggle + User Menu + Mobile Menu Toggle */}
           <div className="flex items-center gap-2">
+            {/* Public navigation for unauthenticated users - aligned right */}
+            {!isAuthenticated && (
+              <nav className="hidden md:flex items-center gap-1">
+                {navItems.map((item) => (
+                  <Link key={item.href} href={item.href}>
+                    <Button
+                      variant={location === item.href ? "secondary" : "ghost"}
+                      size="sm"
+                      data-testid={`link-nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                    >
+                      {item.label}
+                    </Button>
+                  </Link>
+                ))}
+              </nav>
+            )}
+            
             <ThemeToggle />
             
             {isLoading ? null : isAuthenticated ? (
@@ -216,12 +243,14 @@ export function Navbar() {
         </div>
 
         {/* Mobile Navigation Menu */}
-        {mobileMenuOpen && isAuthenticated && (
+        {mobileMenuOpen && (
           <nav className="md:hidden py-4 border-t">
             <div className="flex flex-col gap-1">
-              <div className="px-2 py-2">
-                <TeamSwitcher />
-              </div>
+              {isAuthenticated && (
+                <div className="px-2 py-2">
+                  <TeamSwitcher />
+                </div>
+              )}
               {navItems.map((item) => (
                 <Link key={item.href} href={item.href}>
                   <Button

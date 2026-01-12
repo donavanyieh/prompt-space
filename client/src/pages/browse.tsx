@@ -68,9 +68,16 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
           <h3 className="font-semibold text-base line-clamp-2 flex-1">
             {prompt.title}
           </h3>
-          <Badge variant="secondary" className="shrink-0">
-            {prompt.domain}
-          </Badge>
+          <div className="flex gap-1 shrink-0">
+            {prompt.currentVersion > 1 && (
+              <Badge variant="outline" className="text-xs">
+                v{prompt.currentVersion}
+              </Badge>
+            )}
+            <Badge variant="secondary">
+              {prompt.domain}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent className="flex-1">
           <pre className="font-mono text-sm text-muted-foreground max-h-32 overflow-y-auto whitespace-pre-wrap bg-muted/30 p-3 rounded-md border border-border/50">

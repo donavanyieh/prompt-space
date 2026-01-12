@@ -6,12 +6,13 @@
  */
 
 import { 
-  prompts, comments, teams, teamMembers, votes,
-  type Prompt, type InsertPrompt, 
+  prompts, comments, teams, teamMembers, votes, promptVersions,
+  type Prompt, type InsertPrompt, type UpdatePrompt,
   type Comment, type InsertComment,
   type Team, type InsertTeam,
   type TeamMember, type InsertTeamMember,
-  type Vote, type InsertVote
+  type Vote, type InsertVote,
+  type PromptVersion, type InsertPromptVersion
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, inArray } from "drizzle-orm";
@@ -40,9 +41,15 @@ export interface IStorage {
   getPrompts(teamId: string, options?: { search?: string; domains?: string[]; tasks?: string[]; sort?: 'newest' | 'comments' | 'votes' }): Promise<Prompt[]>;
   getPrompt(id: string): Promise<Prompt | undefined>;
   createPrompt(prompt: InsertPrompt): Promise<Prompt>;
+  updatePrompt(id: string, updates: UpdatePrompt): Promise<Prompt>;
   getUserPrompts(userId: string): Promise<Prompt[]>;
   getUserLikedPrompts(userId: string): Promise<Prompt[]>;
   deletePrompt(id: string): Promise<void>;
+  
+  // Prompt version operations
+  getPromptVersions(promptId: string): Promise<PromptVersion[]>;
+  getPromptVersion(promptId: string, version: number): Promise<PromptVersion | undefined>;
+  createPromptVersion(version: InsertPromptVersion): Promise<PromptVersion>;
   
   // Comment operations
   getComments(promptId: string): Promise<Comment[]>;
@@ -297,11 +304,68 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPrompt(insertPrompt: InsertPrompt): Promise<Prompt> {
-    const [prompt] = await db
-      .insert(prompts)
-      .values(insertPrompt)
-      .returning();
-    return prompt;
+    return await db.transaction(async (tx) => {
+      // Create the prompt
+      const [prompt] = await tx
+        .insert(prompts)
+        .values(insertPrompt)
+        .returning();
+      
+      // Create the initial version (v1)
+      await tx.insert(promptVersions).values({
+        promptId: prompt.id,
+        version: 1,
+        title: prompt.title,
+        prompt: prompt.prompt,
+        domain: prompt.domain,
+        task: prompt.task,
+        notes: prompt.notes,
+        modelUsed: prompt.modelUsed,
+      });
+      
+      return prompt;
+    });
+  }
+
+  async updatePrompt(id: string, updates: UpdatePrompt): Promise<Prompt> {
+    return await db.transaction(async (tx) => {
+      // Get current prompt
+      const [currentPrompt] = await tx
+        .select()
+        .from(prompts)
+        .where(eq(prompts.id, id));
+      
+      if (!currentPrompt) {
+        throw new Error("Prompt not found");
+      }
+      
+      const newVersion = currentPrompt.currentVersion + 1;
+      
+      // Create new version record with the updated content
+      await tx.insert(promptVersions).values({
+        promptId: id,
+        version: newVersion,
+        title: updates.title ?? currentPrompt.title,
+        prompt: updates.prompt ?? currentPrompt.prompt,
+        domain: updates.domain ?? currentPrompt.domain,
+        task: updates.task ?? currentPrompt.task,
+        notes: updates.notes ?? currentPrompt.notes,
+        modelUsed: updates.modelUsed ?? currentPrompt.modelUsed,
+      });
+      
+      // Update the main prompt record
+      const [updatedPrompt] = await tx
+        .update(prompts)
+        .set({
+          ...updates,
+          currentVersion: newVersion,
+          updatedAt: new Date(),
+        })
+        .where(eq(prompts.id, id))
+        .returning();
+      
+      return updatedPrompt;
+    });
   }
 
   /**
@@ -435,6 +499,35 @@ export class DatabaseStorage implements IStorage {
     await db.delete(votes).where(
       and(eq(votes.promptId, promptId), eq(votes.userId, userId))
     );
+  }
+
+  // ============================================
+  // Prompt Version Operations
+  // ============================================
+
+  async getPromptVersions(promptId: string): Promise<PromptVersion[]> {
+    return await db.select()
+      .from(promptVersions)
+      .where(eq(promptVersions.promptId, promptId))
+      .orderBy(desc(promptVersions.version));
+  }
+
+  async getPromptVersion(promptId: string, version: number): Promise<PromptVersion | undefined> {
+    const [promptVersion] = await db.select()
+      .from(promptVersions)
+      .where(and(
+        eq(promptVersions.promptId, promptId),
+        eq(promptVersions.version, version)
+      ));
+    return promptVersion;
+  }
+
+  async createPromptVersion(insertVersion: InsertPromptVersion): Promise<PromptVersion> {
+    const [version] = await db
+      .insert(promptVersions)
+      .values(insertVersion)
+      .returning();
+    return version;
   }
 }
 
