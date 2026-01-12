@@ -253,7 +253,8 @@ export async function registerRoutes(
   app.get("/api/prompts/mine", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const prompts = await storage.getUserPrompts(userId);
+      const teamId = req.query.teamId as string | undefined;
+      const prompts = await storage.getUserPrompts(userId, teamId);
       res.json(prompts);
     } catch (error) {
       console.error("Error fetching user prompts:", error);
@@ -265,7 +266,8 @@ export async function registerRoutes(
   app.get("/api/prompts/liked", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const prompts = await storage.getUserLikedPrompts(userId);
+      const teamId = req.query.teamId as string | undefined;
+      const prompts = await storage.getUserLikedPrompts(userId, teamId);
       res.json(prompts);
     } catch (error) {
       console.error("Error fetching liked prompts:", error);

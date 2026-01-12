@@ -16,7 +16,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, MessageSquare, Calendar, User, Filter, X, Users, ThumbsUp, ThumbsDown, ArrowUpDown, PanelLeftClose, PanelLeft } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, MessageSquare, Calendar, User, Filter, X, Users, ThumbsUp, ThumbsDown, ArrowUpDown, PanelLeftClose, PanelLeft, Trash2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { type Prompt, DOMAINS, TASKS } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
@@ -24,6 +34,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTeam } from "@/contexts/team-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/auth-utils";
 
 interface VoteData {
   upvotes: number;
@@ -34,7 +45,12 @@ interface VoteData {
 /**
  * Individual prompt card component with voting functionality.
  */
-function PromptCard({ prompt }: { prompt: Prompt }) {
+function PromptCard({ prompt, currentUserId, onDelete }: { 
+  prompt: Prompt; 
+  currentUserId: string | undefined;
+  onDelete: (id: string) => void;
+}) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const commentCountQuery = useQuery<number>({
     queryKey: ["/api/prompts", prompt.id, "comments", "count"],
   });
@@ -60,9 +76,11 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
   };
 
   const voteScore = (votesQuery.data?.upvotes ?? 0) - (votesQuery.data?.downvotes ?? 0);
+  const isAuthor = currentUserId === prompt.authorId;
 
   return (
-    <Link href={`/prompt/${prompt.id}`}>
+    <>
+      <Link href={`/prompt/${prompt.id}`}>
       <Card className="card-lift accent-glow cursor-pointer h-full flex flex-col" data-testid={`card-prompt-${prompt.id}`}>
         <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2">
           <h3 className="font-semibold text-base line-clamp-2 flex-1">
@@ -77,6 +95,9 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
             <Badge variant="secondary">
               {prompt.domain}
             </Badge>
+            <Badge variant="outline" className="text-xs">
+              {prompt.task}
+            </Badge>
           </div>
         </CardHeader>
         <CardContent className="flex-1">
@@ -84,9 +105,10 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
             {prompt.prompt}
           </pre>
         </CardContent>
-        <CardFooter className="pt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          {/* Voting controls */}
-          <div className="flex items-center gap-1">
+        <CardFooter className="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Voting controls */}
+            <div className="flex items-center gap-1">
             <Button
               size="icon"
               variant="ghost"
@@ -100,35 +122,79 @@ function PromptCard({ prompt }: { prompt: Prompt }) {
             <span className="min-w-[1.5rem] text-center font-medium" data-testid={`text-vote-score-${prompt.id}`}>
               {voteScore}
             </span>
-            <Button
-              size="icon"
-              variant="ghost"
-              className={`h-6 w-6 ${votesQuery.data?.userVote === -1 ? "text-red-600 dark:text-red-400" : ""}`}
-              onClick={(e) => handleVote(e, -1)}
-              disabled={voteMutation.isPending}
-              data-testid={`button-downvote-${prompt.id}`}
-            >
-              <ThumbsDown className="w-3 h-3" />
-            </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className={`h-6 w-6 ${votesQuery.data?.userVote === -1 ? "text-red-600 dark:text-red-400" : ""}`}
+                onClick={(e) => handleVote(e, -1)}
+                disabled={voteMutation.isPending}
+                data-testid={`button-downvote-${prompt.id}`}
+              >
+                <ThumbsDown className="w-3 h-3" />
+              </Button>
+            </div>
+            <span className="flex items-center gap-1">
+              <MessageSquare className="w-3 h-3" />
+              {commentCountQuery.data ?? 0}
+            </span>
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3" />
+              {formatDistanceToNow(new Date(prompt.createdAt), { addSuffix: true })}
+            </span>
+            <span className="flex items-center gap-1">
+              <User className="w-3 h-3" />
+              {prompt.authorName}
+              {isAuthor && (
+                <Badge variant="default" className="text-xs ml-1">
+                  Yours
+                </Badge>
+              )}
+            </span>
           </div>
-          <Badge variant="outline" className="text-xs">
-            {prompt.task}
-          </Badge>
-          <span className="flex items-center gap-1">
-            <MessageSquare className="w-3 h-3" />
-            {commentCountQuery.data ?? 0}
-          </span>
-          <span className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
-            {formatDistanceToNow(new Date(prompt.createdAt), { addSuffix: true })}
-          </span>
-          <span className="flex items-center gap-1">
-            <User className="w-3 h-3" />
-            {prompt.authorName}
-          </span>
+          {/* Delete button - only visible to author */}
+          {isAuthor && (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowDeleteDialog(true);
+              }}
+              data-testid={`button-delete-prompt-${prompt.id}`}
+            >
+              <Trash2 className="w-3 h-3 mr-1" />
+              Delete
+            </Button>
+          )}
         </CardFooter>
       </Card>
     </Link>
+
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Prompt</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete "{prompt.title}"? This will also remove all comments and votes. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              onDelete(prompt.id);
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            data-testid="button-confirm-delete"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 
@@ -156,7 +222,7 @@ function PromptCardSkeleton() {
 
 export default function Browse() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { activeTeam, hasTeams, isLoading: teamsLoading } = useTeam();
   
   // Filter state
@@ -246,6 +312,44 @@ export default function Browse() {
   };
 
   const hasActiveFilters = selectedDomains.length > 0 || selectedTasks.length > 0 || searchQuery || sortBy !== "newest";
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (promptId: string) => {
+      const response = await apiRequest("DELETE", `/api/prompts/${promptId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts", activeTeam?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/mine"] });
+      toast({
+        title: "Prompt deleted",
+        description: "Your prompt has been permanently removed.",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Session expired",
+          description: "Please log in again.",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete prompt",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDelete = (promptId: string) => {
+    deleteMutation.mutate(promptId);
+  };
 
   // Loading state
   if (authLoading || teamsLoading) {
@@ -478,7 +582,12 @@ export default function Browse() {
           ) : prompts && prompts.length > 0 ? (
             <div className="flex flex-col gap-4">
               {prompts.map((prompt) => (
-                <PromptCard key={prompt.id} prompt={prompt} />
+                <PromptCard 
+                  key={prompt.id} 
+                  prompt={prompt} 
+                  currentUserId={user?.id}
+                  onDelete={handleDelete}
+                />
               ))}
             </div>
           ) : (

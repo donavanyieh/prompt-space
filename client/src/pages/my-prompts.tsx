@@ -21,11 +21,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar, Trash2, FileText, ThumbsUp, ThumbsDown, MessageSquare, Heart, Users } from "lucide-react";
+import { Calendar, Trash2, FileText, ThumbsUp, ThumbsDown, MessageSquare, Heart } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { type Prompt, type Team } from "@shared/schema";
+import { type Prompt } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
+import { useTeam } from "@/contexts/team-context";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/auth-utils";
@@ -64,9 +65,14 @@ function PromptCard({
               {prompt.title}
             </h3>
           </Link>
-          <Badge variant="secondary" className="shrink-0">
-            {prompt.domain}
-          </Badge>
+          <div className="flex gap-1 shrink-0">
+            <Badge variant="secondary">
+              {prompt.domain}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              {prompt.task}
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent className="flex-1">
           <pre className="font-mono text-sm text-muted-foreground max-h-32 overflow-y-auto whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
@@ -84,9 +90,6 @@ function PromptCard({
               <MessageSquare className="w-3 h-3" />
               {commentCountQuery.data ?? 0}
             </span>
-            <Badge variant="outline" className="text-xs">
-              {prompt.task}
-            </Badge>
             <span className="flex items-center gap-1">
               <Calendar className="w-3 h-3" />
               {formatDistanceToNow(new Date(prompt.createdAt), { addSuffix: true })}
@@ -147,9 +150,14 @@ function LikedPromptCard({ prompt }: { prompt: Prompt }) {
             {prompt.title}
           </h3>
         </Link>
-        <Badge variant="secondary" className="shrink-0">
-          {prompt.domain}
-        </Badge>
+        <div className="flex gap-1 shrink-0">
+          <Badge variant="secondary">
+            {prompt.domain}
+          </Badge>
+          <Badge variant="outline" className="text-xs">
+            {prompt.task}
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent className="flex-1">
         <pre className="font-mono text-sm text-muted-foreground max-h-32 overflow-y-auto whitespace-pre-wrap bg-muted/50 p-3 rounded-md">
@@ -166,9 +174,6 @@ function LikedPromptCard({ prompt }: { prompt: Prompt }) {
           <MessageSquare className="w-3 h-3" />
           {commentCountQuery.data ?? 0}
         </span>
-        <Badge variant="outline" className="text-xs">
-          {prompt.task}
-        </Badge>
         <span className="flex items-center gap-1">
           <Calendar className="w-3 h-3" />
           {formatDistanceToNow(new Date(prompt.createdAt), { addSuffix: true })}
@@ -181,6 +186,7 @@ function LikedPromptCard({ prompt }: { prompt: Prompt }) {
 export default function MyPrompts() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { activeTeam, hasTeams, isLoading: teamsLoading } = useTeam();
   const [activeView, setActiveView] = useState<"mine" | "liked">("mine");
 
   // Handle intentional logout - redirect silently to home
@@ -196,51 +202,33 @@ export default function MyPrompts() {
 
   // Auto-refresh data on page visit
   useEffect(() => {
-    if (isAuthenticated) {
-      queryClient.invalidateQueries({ queryKey: ["/api/prompts/mine"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/prompts/liked"] });
+    if (isAuthenticated && activeTeam) {
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/mine", activeTeam.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/liked", activeTeam.id] });
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, activeTeam]);
 
   const { data: prompts, isLoading } = useQuery<Prompt[]>({
-    queryKey: ["/api/prompts/mine"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/prompts/mine", activeTeam?.id],
+    queryFn: async () => {
+      if (!activeTeam) return [];
+      const response = await fetch(`/api/prompts/mine?teamId=${activeTeam.id}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch prompts");
+      return response.json();
+    },
+    enabled: isAuthenticated && !!activeTeam,
   });
 
   const { data: likedPrompts, isLoading: likedLoading } = useQuery<Prompt[]>({
-    queryKey: ["/api/prompts/liked"],
-    enabled: isAuthenticated,
+    queryKey: ["/api/prompts/liked", activeTeam?.id],
+    queryFn: async () => {
+      if (!activeTeam) return [];
+      const response = await fetch(`/api/prompts/liked?teamId=${activeTeam.id}`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch liked prompts");
+      return response.json();
+    },
+    enabled: isAuthenticated && !!activeTeam,
   });
-
-  const { data: teams } = useQuery<Team[]>({
-    queryKey: ["/api/teams/my"],
-    enabled: isAuthenticated,
-  });
-
-  // Group prompts by team
-  const promptsByTeam = prompts?.reduce((acc, prompt) => {
-    const teamId = prompt.teamId;
-    if (!acc[teamId]) {
-      acc[teamId] = [];
-    }
-    acc[teamId].push(prompt);
-    return acc;
-  }, {} as Record<string, Prompt[]>) ?? {};
-
-  // Group liked prompts by team
-  const likedByTeam = likedPrompts?.reduce((acc, prompt) => {
-    const teamId = prompt.teamId;
-    if (!acc[teamId]) {
-      acc[teamId] = [];
-    }
-    acc[teamId].push(prompt);
-    return acc;
-  }, {} as Record<string, Prompt[]>) ?? {};
-
-  // Helper to get team name
-  const getTeamName = (teamId: string) => {
-    return teams?.find(t => t.id === teamId)?.name ?? "Unknown Team";
-  };
 
   const deleteMutation = useMutation({
     mutationFn: async (promptId: string) => {
@@ -248,8 +236,8 @@ export default function MyPrompts() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/prompts/mine"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts/mine", activeTeam?.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prompts", activeTeam?.id] });
       toast({
         title: "Prompt deleted",
         description: "Your prompt has been permanently removed.",
@@ -279,7 +267,7 @@ export default function MyPrompts() {
     deleteMutation.mutate(promptId);
   };
 
-  if (authLoading) {
+  if (authLoading || teamsLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         <Skeleton className="h-10 w-48 mb-6" />
@@ -317,15 +305,36 @@ export default function MyPrompts() {
     );
   }
 
+  // Prompt user to join a team if they haven't
+  if (!hasTeams) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Join a Team First</h2>
+        <p className="text-muted-foreground mb-6">
+          You need to be part of a team to view prompts. Create or join a team to get started.
+        </p>
+        <Button asChild>
+          <Link href="/team" data-testid="link-setup-team">Set Up Your Team</Link>
+        </Button>
+      </div>
+    );
+  }
+
   const currentPrompts = activeView === "mine" ? prompts : likedPrompts;
   const currentLoading = activeView === "mine" ? isLoading : likedLoading;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <FileText className="w-6 h-6" />
-          <h1 className="text-2xl font-bold">My Prompts</h1>
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <FileText className="w-6 h-6" />
+            <h1 className="text-2xl font-bold">My Prompts</h1>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Viewing prompts for {activeTeam?.name}
+          </p>
         </div>
         <Tabs value={activeView} onValueChange={(value) => setActiveView(value as "mine" | "liked")}>
           <TabsList>
@@ -368,36 +377,14 @@ export default function MyPrompts() {
           ))}
         </div>
       ) : currentPrompts && currentPrompts.length > 0 ? (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
           {activeView === "mine" ? (
-            Object.entries(promptsByTeam).map(([teamId, teamPrompts]) => (
-              <div key={teamId} className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
-                  <Users className="w-4 h-4" />
-                  <span data-testid={`text-team-name-${teamId}`}>{getTeamName(teamId)}</span>
-                  <Badge variant="outline" className="ml-auto">{teamPrompts.length} prompt(s)</Badge>
-                </div>
-                <div className="flex flex-col gap-4">
-                  {teamPrompts.map((prompt) => (
-                    <PromptCard key={prompt.id} prompt={prompt} onDelete={handleDelete} />
-                  ))}
-                </div>
-              </div>
+            currentPrompts.map((prompt) => (
+              <PromptCard key={prompt.id} prompt={prompt} onDelete={handleDelete} />
             ))
           ) : (
-            Object.entries(likedByTeam).map(([teamId, teamPrompts]) => (
-              <div key={teamId} className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
-                  <Users className="w-4 h-4" />
-                  <span data-testid={`text-team-name-${teamId}`}>{getTeamName(teamId)}</span>
-                  <Badge variant="outline" className="ml-auto">{teamPrompts.length} prompt(s)</Badge>
-                </div>
-                <div className="flex flex-col gap-4">
-                  {teamPrompts.map((prompt) => (
-                    <LikedPromptCard key={prompt.id} prompt={prompt} />
-                  ))}
-                </div>
-              </div>
+            currentPrompts.map((prompt) => (
+              <LikedPromptCard key={prompt.id} prompt={prompt} />
             ))
           )}
         </div>
