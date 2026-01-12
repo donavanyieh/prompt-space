@@ -48,7 +48,7 @@ export default function Contact() {
     try {
       // Web3Forms expects the access_key to be included in the form data
       const formData = {
-        access_key: import.meta.env.VITE_FORM_ACCESS_KEY,
+        access_key: "876c8b05-4695-4931-9910-3fbaa408b1c5",
         from_name: "PromptSpace Contact Form",
         subject: `Contact Form: ${data.subject}`,
         name: data.name,
@@ -300,12 +300,6 @@ export default function Contact() {
             transition={{ duration: 0.6, delay: 0.5 }}
             className="mt-8 text-center text-sm text-muted-foreground"
           >
-            <p>
-              You can also reach us directly at{" "}
-              <a href="mailto:hello@promptspace.app" className="text-primary hover:underline">
-                hello@promptspace.app
-              </a>
-            </p>
           </motion.div>
         </div>
       </section>
