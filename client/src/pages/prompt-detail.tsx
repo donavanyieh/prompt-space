@@ -15,21 +15,49 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Form,
   FormControl,
   FormField,
   FormItem,
+  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/auth-utils";
-import { type Prompt, type Comment } from "@shared/schema";
+import { type Prompt, type Comment, type PromptVersion, DOMAINS, TASKS } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 import { 
   ArrowLeft, 
@@ -44,7 +72,11 @@ import {
   FileText,
   ThumbsUp,
   ThumbsDown,
-  Bot
+  Bot,
+  Edit,
+  History,
+  AlertCircle,
+  Clock
 } from "lucide-react";
 
 interface VoteData {
@@ -224,12 +256,25 @@ function CommentSection({ promptId }: { promptId: string }) {
   );
 }
 
+const editPromptSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  prompt: z.string().min(1, "Prompt content is required"),
+  domain: z.string().min(1, "Domain is required"),
+  task: z.string().min(1, "Task is required"),
+  notes: z.string().optional(),
+  modelUsed: z.string().optional(),
+});
+
+type EditPromptFormValues = z.infer<typeof editPromptSchema>;
+
 export default function PromptDetail() {
   const [, params] = useRoute("/prompt/:id");
   const promptId = params?.id;
   const [copied, setCopied] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
   const { toast } = useToast();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   // Redirect unauthenticated users
   useEffect(() => {
@@ -258,6 +303,98 @@ export default function PromptDetail() {
     enabled: !!promptId && isAuthenticated,
   });
 
+  // Fetch version history
+  const { data: versions } = useQuery<PromptVersion[]>({
+    queryKey: ["/api/prompts", promptId, "versions"],
+    enabled: !!promptId && isAuthenticated,
+  });
+
+  // Fetch specific version if selected
+  const { data: versionData } = useQuery<PromptVersion>({
+    queryKey: ["/api/prompts", promptId, "versions", selectedVersion],
+    enabled: !!promptId && !!selectedVersion && selectedVersion !== prompt?.currentVersion,
+  });
+
+  // Determine which data to display (current prompt or historical version)
+  const displayData = selectedVersion && selectedVersion !== prompt?.currentVersion && versionData 
+    ? versionData 
+    : prompt;
+
+  const isViewingOldVersion = selectedVersion && selectedVersion !== prompt?.currentVersion;
+  const isAuthor = user?.id === prompt?.authorId;
+
+  // Edit form
+  const editForm = useForm<EditPromptFormValues>({
+    resolver: zodResolver(editPromptSchema),
+    defaultValues: {
+      title: "",
+      prompt: "",
+      domain: "",
+      task: "",
+      notes: "",
+      modelUsed: "",
+    },
+  });
+
+  // Reset form when prompt changes
+  useEffect(() => {
+    if (prompt && editDialogOpen) {
+      editForm.reset({
+        title: prompt.title,
+        prompt: prompt.prompt,
+        domain: prompt.domain,
+        task: prompt.task,
+        notes: prompt.notes || "",
+        modelUsed: prompt.modelUsed || "",
+      });
+    }
+  }, [prompt, editDialogOpen, editForm]);
+
+  // Set initial selected version
+  useEffect(() => {
+    if (prompt && !selectedVersion) {
+      setSelectedVersion(prompt.currentVersion);
+    }
+  }, [prompt, selectedVersion]);
+
+  const editMutation = useMutation({
+    mutationFn: async (data: EditPromptFormValues) => {
+      const response = await apiRequest("PUT", `/api/prompts/${promptId}`, data);
+      return response.json();
+    },
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/prompts", promptId] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/prompts", promptId, "versions"] });
+      
+      // Switch to the newly created version
+      if (data.currentVersion) {
+        setSelectedVersion(data.currentVersion);
+      }
+      
+      setEditDialogOpen(false);
+      toast({
+        title: "Prompt updated",
+        description: "Your changes have been saved as a new version.",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Session expired", description: "Please log in again.", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update prompt",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onEditSubmit = (data: EditPromptFormValues) => {
+    editMutation.mutate(data);
+  };
+
   // Fetch vote data
   const votesQuery = useQuery<VoteData>({
     queryKey: ["/api/prompts", promptId, "votes"],
@@ -281,8 +418,8 @@ export default function PromptDetail() {
   const voteScore = (votesQuery.data?.upvotes ?? 0) - (votesQuery.data?.downvotes ?? 0);
 
   const copyToClipboard = async () => {
-    if (prompt) {
-      await navigator.clipboard.writeText(prompt.prompt);
+    if (displayData) {
+      await navigator.clipboard.writeText(displayData.prompt);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -364,14 +501,77 @@ export default function PromptDetail() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Main Content Column */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Version Warning Banner */}
+            {isViewingOldVersion && (
+              <Alert className="bg-yellow-50 border-yellow-200 text-yellow-900 dark:bg-yellow-900/10 dark:border-yellow-900/50 dark:text-yellow-200">
+                <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+                <AlertDescription className="flex items-center justify-between">
+                  <span>You're viewing version {selectedVersion} (not the latest version).</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedVersion(prompt?.currentVersion || null)}
+                  >
+                    View Current
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Version Selector & Edit Button */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-1">
+                {!isViewingOldVersion && (
+                  <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">
+                    Latest
+                  </Badge>
+                )}
+                <Label className="text-sm font-medium">Version:</Label>
+                <Select 
+                  value={selectedVersion?.toString()} 
+                  onValueChange={(val) => setSelectedVersion(parseInt(val))}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select version" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {versions?.map((v) => (
+                      <SelectItem key={v.version} value={v.version.toString()}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-medium shrink-0">v{v.version}</span>
+                          <span className="text-xs text-muted-foreground truncate">
+                            {formatDistanceToNow(new Date(v.createdAt), { addSuffix: true })}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {isAuthor && !isViewingOldVersion && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setEditDialogOpen(true)}
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Make Revision
+                </Button>
+              )}
+            </div>
+
             {/* Prompt Card */}
             <Card>
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <CardTitle className="text-xl">{prompt.title}</CardTitle>
+                  <CardTitle className="text-xl">{displayData?.title}</CardTitle>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">{prompt.domain}</Badge>
-                    <Badge variant="outline">{prompt.task}</Badge>
+                    <Badge variant="secondary">{displayData?.domain}</Badge>
+                    <Badge variant="outline">{displayData?.task}</Badge>
+                    {prompt && (
+                      <Badge variant="outline" className="text-xs">v{selectedVersion || prompt.currentVersion}</Badge>
+                    )}
                   </div>
                 </div>
                 <Button
@@ -395,10 +595,10 @@ export default function PromptDetail() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <pre className="font-mono text-sm whitespace-pre-wrap bg-muted/50 p-4 rounded-md" data-testid="text-prompt-content">
-                  {prompt.prompt}
+                  {displayData?.prompt}
                 </pre>
                 
-                {prompt.notes && (
+                {displayData?.notes && (
                   <>
                     <Separator />
                     <div>
@@ -407,7 +607,7 @@ export default function PromptDetail() {
                         Notes
                       </h4>
                       <p className="text-sm text-foreground/90 whitespace-pre-wrap">
-                        {prompt.notes}
+                        {displayData.notes}
                       </p>
                     </div>
                   </>
@@ -454,6 +654,56 @@ export default function PromptDetail() {
                 <p className="text-xs text-muted-foreground text-center mt-2">
                   {votesQuery.data?.upvotes ?? 0} upvotes, {votesQuery.data?.downvotes ?? 0} downvotes
                 </p>
+              </CardContent>
+            </Card>
+
+            {/* Version History Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <History className="w-4 h-4" />
+                  Version History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[300px] pr-4">
+                  <div className="space-y-4">
+                    {versions?.map((v, idx) => (
+                      <div key={v.version} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className={`w-3 h-3 rounded-full ${
+                            v.version === prompt?.currentVersion ? 'bg-primary' : 'bg-muted'
+                          }`} />
+                          {idx < versions.length - 1 && (
+                            <div className="w-0.5 flex-1 min-h-[60px] bg-border" />
+                          )}
+                        </div>
+                        <div className="flex-1 pb-4">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">Version {v.version}</span>
+                              {v.version === prompt?.currentVersion && (
+                                <Badge variant="default" className="text-xs">Current</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
+                            <Clock className="w-3 h-3" />
+                            {formatDistanceToNow(new Date(v.createdAt), { addSuffix: true })}
+                          </p>
+                          <Button
+                            variant={selectedVersion === v.version ? "default" : "outline"}
+                            size="sm"
+                            className="w-full"
+                            onClick={() => setSelectedVersion(v.version)}
+                          >
+                            {selectedVersion === v.version ? "Viewing" : "View this version"}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               </CardContent>
             </Card>
 
@@ -535,6 +785,154 @@ export default function PromptDetail() {
             </Button>
           </div>
         </div>
+
+        {/* Edit Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Prompt</DialogTitle>
+              <DialogDescription>
+                Make changes to your prompt. This will create a new version.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...editForm}>
+              <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                <FormField
+                  control={editForm.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter prompt title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="prompt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Prompt Content</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter the prompt content"
+                          className="min-h-[200px] font-mono"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={editForm.control}
+                    name="domain"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Domain</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select domain" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {DOMAINS.map((domain) => (
+                              <SelectItem key={domain} value={domain}>
+                                {domain}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={editForm.control}
+                    name="task"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Task</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select task" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {TASKS.map((task) => (
+                              <SelectItem key={task} value={task}>
+                                {task}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={editForm.control}
+                  name="modelUsed"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Model Used (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="e.g., GPT-4, Claude 3"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={editForm.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notes (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Add any additional notes or context"
+                          className="min-h-[100px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setEditDialogOpen(false)}
+                    disabled={editMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={editMutation.isPending}>
+                    {editMutation.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

@@ -90,18 +90,30 @@ export function log(message: string, source = "express"): void {
 // =============================================================================
 
 /**
- * Logs API requests with method, path, status, duration, and response body
- * Only logs requests to /api/* endpoints to reduce noise
+ * Logs API requests with method, path, status, duration, and optionally response size.
+ * Only logs requests to /api/* endpoints to reduce noise.
+ * 
+ * Follows best practices:
+ * - Response bodies NOT logged by default (security, performance, readability)
+ * - Set LOG_RESPONSE_BODIES=true in .env for verbose debugging
+ * - Errors (status >= 400) always include response body for troubleshooting
  */
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  let responseSize = 0;
 
-  // Intercept res.json to capture response body
+  // Intercept res.json to capture response metadata
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
     capturedJsonResponse = bodyJson;
+    // Calculate response size
+    try {
+      responseSize = JSON.stringify(bodyJson).length;
+    } catch {
+      responseSize = 0;
+    }
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
 
@@ -113,8 +125,17 @@ app.use((req, res, next) => {
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       
-      // Append response body for debugging
-      if (capturedJsonResponse) {
+      // Add response size for context (helpful without being verbose)
+      if (responseSize > 0) {
+        const sizeKb = (responseSize / 1024).toFixed(1);
+        logLine += ` (${sizeKb}kb)`;
+      }
+      
+      // Include response body for errors (status >= 400) or if verbose logging enabled
+      const isError = res.statusCode >= 400;
+      const verboseLogging = process.env.LOG_RESPONSE_BODIES === "true";
+      
+      if (capturedJsonResponse && (isError || verboseLogging)) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
 

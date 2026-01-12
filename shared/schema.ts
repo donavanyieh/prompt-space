@@ -74,6 +74,22 @@ export const prompts = pgTable("prompts", {
   authorId: varchar("author_id").notNull(),
   authorName: text("author_name").notNull(),
   teamId: varchar("team_id").notNull(),
+  currentVersion: integer("current_version").notNull().default(1),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Prompt versions table - stores historical versions of prompts
+export const promptVersions = pgTable("prompt_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  promptId: varchar("prompt_id").notNull(),
+  version: integer("version").notNull(),
+  title: text("title").notNull(),
+  prompt: text("prompt").notNull(),
+  domain: text("domain").notNull(),
+  task: text("task").notNull(),
+  notes: text("notes"),
+  modelUsed: text("model_used"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -115,6 +131,14 @@ export const promptsRelations = relations(prompts, ({ one, many }) => ({
     references: [teams.id],
   }),
   comments: many(comments),
+  versions: many(promptVersions),
+}));
+
+export const promptVersionsRelations = relations(promptVersions, ({ one }) => ({
+  prompt: one(prompts, {
+    fields: [promptVersions.promptId],
+    references: [prompts.id],
+  }),
 }));
 
 export const commentsRelations = relations(comments, ({ one }) => ({
@@ -146,6 +170,23 @@ export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({
 export const insertPromptSchema = createInsertSchema(prompts).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
+  currentVersion: true,
+});
+
+export const updatePromptSchema = createInsertSchema(prompts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  currentVersion: true,
+  authorId: true,
+  authorName: true,
+  teamId: true,
+}).partial();
+
+export const insertPromptVersionSchema = createInsertSchema(promptVersions).omit({
+  id: true,
+  createdAt: true,
 });
 
 export const insertCommentSchema = createInsertSchema(comments).omit({
@@ -167,6 +208,10 @@ export type TeamMember = typeof teamMembers.$inferSelect;
 
 export type InsertPrompt = z.infer<typeof insertPromptSchema>;
 export type Prompt = typeof prompts.$inferSelect;
+export type UpdatePrompt = z.infer<typeof updatePromptSchema>;
+
+export type InsertPromptVersion = z.infer<typeof insertPromptVersionSchema>;
+export type PromptVersion = typeof promptVersions.$inferSelect;
 
 export type InsertComment = z.infer<typeof insertCommentSchema>;
 export type Comment = typeof comments.$inferSelect;

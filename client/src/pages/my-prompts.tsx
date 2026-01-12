@@ -329,12 +329,20 @@ export default function MyPrompts() {
         </div>
         <Tabs value={activeView} onValueChange={(value) => setActiveView(value as "mine" | "liked")}>
           <TabsList>
-            <TabsTrigger value="mine" className="gap-2" data-testid="tab-my-prompts">
+            <TabsTrigger 
+              value="mine" 
+              className="gap-2" 
+              data-testid="tab-my-prompts"
+            >
               <FileText className="w-4 h-4" />
               Submitted
               <Badge variant="secondary" className="ml-1">{prompts?.length || 0}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="liked" className="gap-2" data-testid="tab-liked-prompts">
+            <TabsTrigger 
+              value="liked" 
+              className="gap-2" 
+              data-testid="tab-liked-prompts"
+            >
               <Heart className="w-4 h-4" />
               Liked
               <Badge variant="secondary" className="ml-1">{likedPrompts?.length || 0}</Badge>
@@ -367,7 +375,7 @@ export default function MyPrompts() {
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
                   <Users className="w-4 h-4" />
                   <span data-testid={`text-team-name-${teamId}`}>{getTeamName(teamId)}</span>
-                  <Badge variant="outline" className="ml-auto">{teamPrompts.length}</Badge>
+                  <Badge variant="outline" className="ml-auto">{teamPrompts.length} prompt(s)</Badge>
                 </div>
                 <div className="flex flex-col gap-4">
                   {teamPrompts.map((prompt) => (
@@ -382,7 +390,7 @@ export default function MyPrompts() {
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground border-b pb-2">
                   <Users className="w-4 h-4" />
                   <span data-testid={`text-team-name-${teamId}`}>{getTeamName(teamId)}</span>
-                  <Badge variant="outline" className="ml-auto">{teamPrompts.length}</Badge>
+                  <Badge variant="outline" className="ml-auto">{teamPrompts.length} prompt(s)</Badge>
                 </div>
                 <div className="flex flex-col gap-4">
                   {teamPrompts.map((prompt) => (

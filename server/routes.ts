@@ -8,7 +8,7 @@
 import type { Express } from "express";
 import { type Server } from "http";
 import { storage } from "./storage";
-import { insertPromptSchema, insertCommentSchema, insertTeamSchema } from "@shared/schema";
+import { insertPromptSchema, insertCommentSchema, insertTeamSchema, updatePromptSchema } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated, authStorage } from "./auth";
 
@@ -333,6 +333,32 @@ export async function registerRoutes(
     }
   });
 
+  // Update a prompt (only the author can update)
+  app.put("/api/prompts/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const prompt = await storage.getPrompt(req.params.id);
+      
+      if (!prompt) {
+        return res.status(404).json({ message: "Prompt not found" });
+      }
+      
+      if (prompt.authorId !== userId) {
+        return res.status(403).json({ message: "You can only edit your own prompts" });
+      }
+      
+      const validatedData = updatePromptSchema.parse(req.body);
+      const updatedPrompt = await storage.updatePrompt(req.params.id, validatedData);
+      res.json(updatedPrompt);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("Error updating prompt:", error);
+      res.status(500).json({ message: "Failed to update prompt" });
+    }
+  });
+
   // Delete a prompt (only the author can delete)
   app.delete("/api/prompts/:id", isAuthenticated, async (req: any, res) => {
     try {
@@ -352,6 +378,56 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting prompt:", error);
       res.status(500).json({ message: "Failed to delete prompt" });
+    }
+  });
+
+  // Get all versions for a prompt (requires team membership)
+  app.get("/api/prompts/:id/versions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const prompt = await storage.getPrompt(req.params.id);
+      
+      if (!prompt) {
+        return res.status(404).json({ message: "Prompt not found" });
+      }
+      
+      const isMember = await storage.isUserInTeam(userId, prompt.teamId);
+      if (!isMember) {
+        return res.status(403).json({ message: "Not authorized to view this prompt" });
+      }
+      
+      const versions = await storage.getPromptVersions(req.params.id);
+      res.json(versions);
+    } catch (error) {
+      console.error("Error fetching prompt versions:", error);
+      res.status(500).json({ message: "Failed to fetch prompt versions" });
+    }
+  });
+
+  // Get a specific version of a prompt (requires team membership)
+  app.get("/api/prompts/:id/versions/:version", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const prompt = await storage.getPrompt(req.params.id);
+      
+      if (!prompt) {
+        return res.status(404).json({ message: "Prompt not found" });
+      }
+      
+      const isMember = await storage.isUserInTeam(userId, prompt.teamId);
+      if (!isMember) {
+        return res.status(403).json({ message: "Not authorized to view this prompt" });
+      }
+      
+      const version = await storage.getPromptVersion(req.params.id, parseInt(req.params.version));
+      if (!version) {
+        return res.status(404).json({ message: "Version not found" });
+      }
+      
+      res.json(version);
+    } catch (error) {
+      console.error("Error fetching prompt version:", error);
+      res.status(500).json({ message: "Failed to fetch prompt version" });
     }
   });
 
