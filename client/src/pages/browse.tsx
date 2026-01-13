@@ -45,10 +45,11 @@ interface VoteData {
 /**
  * Individual prompt card component with voting functionality.
  */
-function PromptCard({ prompt, currentUserId, onDelete }: { 
+function PromptCard({ prompt, currentUserId, onDelete, isDeleting }: { 
   prompt: Prompt; 
   currentUserId: string | undefined;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, deleteType: "latest" | "all") => void;
+  isDeleting: boolean;
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const commentCountQuery = useQuery<number>({
@@ -176,21 +177,61 @@ function PromptCard({ prompt, currentUserId, onDelete }: {
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Prompt</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete "{prompt.title}"? This will also remove all comments and votes. This action cannot be undone.
+            {prompt.currentVersion > 1 ? (
+              <>
+                This prompt has {prompt.currentVersion} versions. Would you like to:
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li><strong>Delete latest version only:</strong> Rollback to version {prompt.currentVersion - 1} (keeps comments and votes)</li>
+                  <li><strong>Delete all versions:</strong> Permanently remove the entire prompt, all versions, comments, and votes</li>
+                </ul>
+              </>
+            ) : (
+              <>
+                Are you sure you want to delete "{prompt.title}"? This will also remove all comments and votes. This action cannot be undone.
+              </>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(e) => {
-              e.preventDefault();
-              onDelete(prompt.id);
-            }}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            data-testid="button-confirm-delete"
-          >
-            Delete
-          </AlertDialogAction>
+          <AlertDialogCancel disabled={isDeleting} data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+          {prompt.currentVersion > 1 ? (
+            <>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  onDelete(prompt.id, "latest");
+                }}
+                disabled={isDeleting}
+                className="bg-orange-600 text-white hover:bg-orange-700 border-0"
+                data-testid="button-delete-latest"
+              >
+                {isDeleting ? "Deleting..." : "Delete Latest Version"}
+              </AlertDialogAction>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  onDelete(prompt.id, "all");
+                }}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 border-0"
+                data-testid="button-delete-all"
+              >
+                {isDeleting ? "Deleting..." : "Delete All Versions"}
+              </AlertDialogAction>
+            </>
+          ) : (
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                onDelete(prompt.id, "all");
+              }}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="button-confirm-delete"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -315,17 +356,25 @@ export default function Browse() {
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: async (promptId: string) => {
-      const response = await apiRequest("DELETE", `/api/prompts/${promptId}`);
+    mutationFn: async ({ promptId, deleteType }: { promptId: string; deleteType: "latest" | "all" }) => {
+      const response = await apiRequest("DELETE", `/api/prompts/${promptId}?deleteType=${deleteType}`);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/prompts", activeTeam?.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/prompts/mine"] });
-      toast({
-        title: "Prompt deleted",
-        description: "Your prompt has been permanently removed.",
-      });
+      
+      if (variables.deleteType === "latest") {
+        toast({
+          title: "Version deleted",
+          description: "Latest version has been removed. Prompt rolled back to previous version.",
+        });
+      } else {
+        toast({
+          title: "Prompt deleted",
+          description: "Your prompt has been permanently removed.",
+        });
+      }
     },
     onError: (error: Error) => {
       if (isUnauthorizedError(error)) {
@@ -347,8 +396,8 @@ export default function Browse() {
     },
   });
 
-  const handleDelete = (promptId: string) => {
-    deleteMutation.mutate(promptId);
+  const handleDelete = (promptId: string, deleteType: "latest" | "all") => {
+    deleteMutation.mutate({ promptId, deleteType });
   };
 
   // Loading state
@@ -587,6 +636,7 @@ export default function Browse() {
                   prompt={prompt} 
                   currentUserId={user?.id}
                   onDelete={handleDelete}
+                  isDeleting={deleteMutation.isPending}
                 />
               ))}
             </div>

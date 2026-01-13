@@ -37,6 +37,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -77,7 +87,8 @@ import {
   History,
   AlertCircle,
   Clock,
-  GitCompare
+  GitCompare,
+  Trash2
 } from "lucide-react";
 import { CompareVersions } from "@/components/compare-versions";
 
@@ -275,6 +286,7 @@ export default function PromptDetail() {
   const [copied, setCopied] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [compareVersionsOpen, setCompareVersionsOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -396,6 +408,60 @@ export default function PromptDetail() {
 
   const onEditSubmit = (data: EditPromptFormValues) => {
     editMutation.mutate(data);
+  };
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async ({ deleteType }: { deleteType: "latest" | "all" }) => {
+      const response = await apiRequest("DELETE", `/api/prompts/${promptId}?deleteType=${deleteType}`);
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      if (variables.deleteType === "latest") {
+        // Refresh the prompt data and switch to the rolled-back version
+        queryClient.invalidateQueries({ queryKey: ["/api/prompts", promptId] });
+        queryClient.invalidateQueries({ queryKey: ["/api/prompts", promptId, "versions"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/prompts/mine"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/prompts"] });
+        
+        toast({
+          title: "Version deleted",
+          description: "Latest version has been removed. Prompt rolled back to previous version.",
+        });
+        
+        // Update to the new current version
+        if (prompt && prompt.currentVersion > 1) {
+          setSelectedVersion(prompt.currentVersion - 1);
+        }
+      } else {
+        // Redirect since the prompt no longer exists
+        toast({
+          title: "Prompt deleted",
+          description: "Your prompt has been permanently removed.",
+        });
+        
+        setTimeout(() => {
+          window.location.href = "/my-prompts";
+        }, 500);
+      }
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Session expired", description: "Please log in again.", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete prompt",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDelete = (deleteType: "latest" | "all") => {
+    deleteMutation.mutate({ deleteType });
+    setDeleteDialogOpen(false);
   };
 
   // Fetch vote data
@@ -797,8 +863,77 @@ export default function PromptDetail() {
                 </>
               )}
             </Button>
+
+            {/* Delete Button - Only for Authors */}
+            {isAuthor && !isViewingOldVersion && (
+              <Button 
+                variant="destructive" 
+                className="w-full"
+                onClick={() => setDeleteDialogOpen(true)}
+                data-testid="button-delete-prompt-detail"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Prompt
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Delete Alert Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Prompt</AlertDialogTitle>
+              <AlertDialogDescription>
+                {prompt.currentVersion > 1 ? (
+                  <>
+                    This prompt has {prompt.currentVersion} versions. Would you like to:
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li><strong>Delete latest version only:</strong> Rollback to version {prompt.currentVersion - 1} (keeps comments and votes)</li>
+                      <li><strong>Delete all versions:</strong> Permanently remove the entire prompt, all versions, comments, and votes</li>
+                    </ul>
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to delete "{prompt.title}"? This will also remove all comments and votes. This action cannot be undone.
+                  </>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleteMutation.isPending} data-testid="button-cancel-delete-detail">Cancel</AlertDialogCancel>
+              {prompt.currentVersion > 1 ? (
+                <>
+                  <AlertDialogAction
+                    onClick={() => handleDelete("latest")}
+                    disabled={deleteMutation.isPending}
+                    className="bg-orange-600 text-white hover:bg-orange-700 border-0"
+                    data-testid="button-delete-latest-detail"
+                  >
+                    {deleteMutation.isPending ? "Deleting..." : "Delete Latest Version"}
+                  </AlertDialogAction>
+                  <AlertDialogAction
+                    onClick={() => handleDelete("all")}
+                    disabled={deleteMutation.isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 border-0"
+                    data-testid="button-delete-all-detail"
+                  >
+                    {deleteMutation.isPending ? "Deleting..." : "Delete All Versions"}
+                  </AlertDialogAction>
+                </>
+              ) : (
+                <AlertDialogAction
+                  onClick={() => handleDelete("all")}
+                  disabled={deleteMutation.isPending}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  data-testid="button-confirm-delete-detail"
+                >
+                  {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                </AlertDialogAction>
+              )}
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Compare Versions Sheet */}
         {versions && prompt && (

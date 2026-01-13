@@ -509,9 +509,11 @@ Please provide an improved version and explain all the changes you made to enhan
   });
 
   // Delete a prompt (only the author can delete)
+  // Supports query param: deleteType=latest|all (default: all)
   app.delete("/api/prompts/:id", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const deleteType = req.query.deleteType as string || "all";
       const prompt = await storage.getPrompt(req.params.id);
       
       if (!prompt) {
@@ -522,8 +524,21 @@ Please provide an improved version and explain all the changes you made to enhan
         return res.status(403).json({ message: "You can only delete your own prompts" });
       }
       
-      await storage.deletePrompt(req.params.id);
-      res.json({ message: "Prompt deleted successfully" });
+      if (deleteType === "latest") {
+        // Rollback to previous version (delete only latest)
+        if (prompt.currentVersion <= 1) {
+          return res.status(400).json({ message: "Cannot delete the only version" });
+        }
+        const rolledBackPrompt = await storage.rollbackPromptToVersion(req.params.id);
+        return res.json({ 
+          message: "Latest version deleted successfully", 
+          prompt: rolledBackPrompt 
+        });
+      } else {
+        // Delete entire prompt with all versions
+        await storage.deletePrompt(req.params.id);
+        return res.json({ message: "Prompt deleted successfully" });
+      }
     } catch (error) {
       console.error("Error deleting prompt:", error);
       res.status(500).json({ message: "Failed to delete prompt" });

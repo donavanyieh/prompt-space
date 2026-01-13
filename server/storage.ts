@@ -45,6 +45,7 @@ export interface IStorage {
   getUserPrompts(userId: string, teamId?: string): Promise<Prompt[]>;
   getUserLikedPrompts(userId: string, teamId?: string): Promise<Prompt[]>;
   deletePrompt(id: string): Promise<void>;
+  rollbackPromptToVersion(id: string): Promise<Prompt>;
   
   // Prompt version operations
   getPromptVersions(promptId: string): Promise<PromptVersion[]>;
@@ -450,8 +451,74 @@ export class DatabaseStorage implements IStorage {
     await db.delete(comments).where(eq(comments.promptId, id));
     // Delete related votes
     await db.delete(votes).where(eq(votes.promptId, id));
+    // Delete related versions
+    await db.delete(promptVersions).where(eq(promptVersions.promptId, id));
     // Delete the prompt
     await db.delete(prompts).where(eq(prompts.id, id));
+  }
+
+  /**
+   * Rolls back a prompt to its previous version by deleting the latest version.
+   * This keeps all comments and votes intact, only reverting the prompt content.
+   * @throws Error if prompt not found or if currentVersion is 1 (cannot rollback v1)
+   */
+  async rollbackPromptToVersion(id: string): Promise<Prompt> {
+    return await db.transaction(async (tx) => {
+      // Get current prompt
+      const [currentPrompt] = await tx
+        .select()
+        .from(prompts)
+        .where(eq(prompts.id, id));
+      
+      if (!currentPrompt) {
+        throw new Error("Prompt not found");
+      }
+      
+      if (currentPrompt.currentVersion <= 1) {
+        throw new Error("Cannot rollback version 1");
+      }
+      
+      const previousVersionNumber = currentPrompt.currentVersion - 1;
+      
+      // Get the previous version data
+      const [previousVersion] = await tx
+        .select()
+        .from(promptVersions)
+        .where(and(
+          eq(promptVersions.promptId, id),
+          eq(promptVersions.version, previousVersionNumber)
+        ));
+      
+      if (!previousVersion) {
+        throw new Error("Previous version not found");
+      }
+      
+      // Delete the current (latest) version from versions table
+      await tx
+        .delete(promptVersions)
+        .where(and(
+          eq(promptVersions.promptId, id),
+          eq(promptVersions.version, currentPrompt.currentVersion)
+        ));
+      
+      // Update the main prompt record to reflect the previous version
+      const [rolledBackPrompt] = await tx
+        .update(prompts)
+        .set({
+          title: previousVersion.title,
+          prompt: previousVersion.prompt,
+          domain: previousVersion.domain,
+          task: previousVersion.task,
+          notes: previousVersion.notes,
+          modelUsed: previousVersion.modelUsed,
+          currentVersion: previousVersionNumber,
+          updatedAt: new Date(),
+        })
+        .where(eq(prompts.id, id))
+        .returning();
+      
+      return rolledBackPrompt;
+    });
   }
 
   // ============================================
