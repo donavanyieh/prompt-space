@@ -3,7 +3,7 @@
 
 A collaborative prompt management platform for teams to share, version, and organize AI prompts.
 
-Deployed on [promptspace.online](promptspace.online)
+Deployed on [promptspace.online](https://promptspace.online)
 ## Features
 
 - 🔐 **Google OAuth Authentication** - Secure authentication via Google accounts
