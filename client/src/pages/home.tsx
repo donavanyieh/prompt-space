@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { 
   Search, Share2, Sparkles, ArrowRight, Code2, LogIn, Users,
   RefreshCw, MessageSquare, ThumbsUp, Lock, Tag, CheckCircle2,
-  X, Zap, ChevronDown, HelpCircle
+  X, Zap, ChevronDown, HelpCircle, Wand2
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
@@ -162,7 +162,7 @@ export default function Home() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             Scattered across Slack, Notion, Google Docs, and Excel? Build a searchable, 
-            collaborative prompt library that your team can leverage.
+            collaborative prompt library with AI-powered optimization that your team can leverage.
           </motion.p>
           
           {/* Dynamic CTA based on auth and team state */}
@@ -230,8 +230,8 @@ export default function Home() {
               { icon: RefreshCw, title: "Version Control", desc: "Never lose a prompt iteration. Track changes, restore previous versions, and see who edited what." },
               { icon: MessageSquare, title: "Team Discussions", desc: "Collaborate in context. Comment directly on prompts, discuss improvements, and share insights." },
               { icon: ThumbsUp, title: "Quality Curation", desc: "Surface the best prompts. Upvote/downvote system helps teams identify what works best." },
-              { icon: Search, title: "Powerful Search", desc: "Find prompts instantly. Filter by domain (Engineering, Marketing, etc.) and task type." },
-              { icon: Tag, title: "Smart Organization", desc: "Keep everything organized. Automatic categorization by domain and task makes browsing intuitive." },
+              { icon: Search, title: "Smart Search & Organization", desc: "Find prompts instantly with powerful search. Automatic categorization by domain and task keeps everything organized." },
+              { icon: Wand2, title: "AI Prompt Crafter", desc: "Build optimized prompts from scratch or improve existing ones with AI-powered suggestions and detailed explanations." },
               { icon: Lock, title: "Secure & Private", desc: "Team-only access. Google OAuth authentication, team-based permissions, your data stays private." }
             ].map((feature, index) => (
               <motion.div
@@ -352,17 +352,17 @@ export default function Home() {
 
       {/* HOW IT WORKS SECTION - Improved */}
       <section className="py-12 px-4 bg-background">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="text-2xl md:text-3xl font-bold mb-3 tracking-tight">
-              Get Started in 3 Simple Steps
+              Get Started in 4 Simple Steps
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               From setup to collaboration in minutes
             </p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-12 relative">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 relative">
             {/* Step 1 */}
             <div className="text-center relative">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary text-primary-foreground text-2xl font-bold mb-6">
@@ -380,7 +380,7 @@ export default function Home() {
                 </CardContent>
               </Card>
               {/* Arrow connector for desktop */}
-              <div className="hidden md:block absolute top-8 left-full w-12 h-0.5 bg-gradient-to-r from-primary to-transparent" />
+              <div className="hidden lg:block absolute top-8 left-full w-8 h-0.5 bg-gradient-to-r from-primary to-transparent" />
             </div>
 
             {/* Step 2 */}
@@ -400,13 +400,33 @@ export default function Home() {
                 </CardContent>
               </Card>
               {/* Arrow connector for desktop */}
-              <div className="hidden md:block absolute top-8 left-full w-12 h-0.5 bg-gradient-to-r from-primary to-transparent" />
+              <div className="hidden lg:block absolute top-8 left-full w-8 h-0.5 bg-gradient-to-r from-primary to-transparent" />
             </div>
             
             {/* Step 3 */}
-            <div className="text-center">
+            <div className="text-center relative">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary text-primary-foreground text-2xl font-bold mb-6">
                 3
+              </div>
+              <Card className="card-lift accent-glow">
+                <CardContent className="pt-8 pb-8">
+                  <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-5 mx-auto">
+                    <Wand2 className="w-7 h-7 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-3">Create or Optimize Prompt</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    Use AI Prompt Crafter to build optimized prompts from scratch or improve existing ones.
+                  </p>
+                </CardContent>
+              </Card>
+              {/* Arrow connector for desktop */}
+              <div className="hidden lg:block absolute top-8 left-full w-8 h-0.5 bg-gradient-to-r from-primary to-transparent" />
+            </div>
+
+            {/* Step 4 */}
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary text-primary-foreground text-2xl font-bold mb-6">
+                4
               </div>
               <Card className="card-lift accent-glow">
                 <CardContent className="pt-8 pb-8">
@@ -455,6 +475,10 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-primary" />
               <span>Unlimited team members</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <span>Free to use</span>
             </div>
           </div>
 

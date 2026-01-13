@@ -33,6 +33,7 @@ const authenticatedNavItems = [
   { label: "Browse Prompts", href: "/browse" },
   { label: "Submit Prompt", href: "/submit" },
   { label: "My Prompts", href: "/my-prompts" },
+  { label: "Prompt Crafter", href: "/prompt-crafter" },
   { label: "Manage Teams", href: "/team" },
 ];
 

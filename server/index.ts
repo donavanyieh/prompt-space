@@ -14,6 +14,7 @@ import { config } from "dotenv";
 config(); // Load environment variables from .env file
 
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -39,6 +40,48 @@ declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
   }
+}
+
+// =============================================================================
+// Security Middleware
+// =============================================================================
+
+/**
+ * Helmet.js - Sets security-related HTTP headers
+ * Protects against XSS, clickjacking, MIME sniffing, and other attacks
+ */
+if (process.env.NODE_ENV === "production") {
+  // Strict security headers for production
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"], // Needed for Tailwind/styled components
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'"],
+          fontSrc: ["'self'", "data:"],
+          objectSrc: ["'none'"],
+          mediaSrc: ["'self'"],
+          frameSrc: ["'none'"],
+        },
+      },
+      hsts: {
+        maxAge: 31536000, // 1 year
+        includeSubDomains: true,
+        preload: true,
+      },
+    })
+  );
+} else {
+  // Relaxed security for development (allows Vite HMR and dev tools)
+  app.use(
+    helmet({
+      contentSecurityPolicy: false, // Disable CSP in dev to allow Vite HMR
+      crossOriginEmbedderPolicy: false, // Allow Vite dev server
+    })
+  );
 }
 
 // =============================================================================

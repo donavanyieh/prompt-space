@@ -11,11 +11,158 @@ import { storage } from "./storage";
 import { insertPromptSchema, insertCommentSchema, insertTeamSchema, updatePromptSchema } from "@shared/schema";
 import { z } from "zod";
 import { isAuthenticated, authStorage } from "./auth";
+import OpenAI from "openai";
+
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  
+  // ============================================
+  // Prompt Crafter Routes (Public)
+  // ============================================
+
+  // Optimize prompt using OpenAI
+  app.post("/api/prompt-crafter/optimize", async (req, res) => {
+    try {
+      const { mode, task, purpose, outputFormat, styleTone, existingPrompt } = req.body;
+
+      if (!mode || (mode !== "build" && mode !== "paste")) {
+        return res.status(400).json({ message: "Invalid mode" });
+      }
+
+      let systemPrompt: string;
+      let userPrompt: string;
+
+      if (mode === "build") {
+        // Validate required fields for build mode
+        if (!task || !purpose || !outputFormat || !styleTone) {
+          return res.status(400).json({ message: "All fields are required for build mode" });
+        }
+
+        systemPrompt = `You are an expert prompt engineer. Your task is to create an optimized AI prompt based on user requirements and provide a detailed explanation of the changes and enhancements made.
+
+Return your response in the following JSON format:
+{
+  "optimizedPrompt": "the complete optimized prompt text",
+  "changesMade": [
+    {
+      "type": "added" | "improved" | "structured" | "clarified",
+      "description": "detailed explanation of what was added/improved/structured/clarified"
+    }
+  ]
+}
+
+Guidelines for creating the optimized prompt:
+1. Structure the prompt clearly with sections if needed
+2. Include specific instructions and constraints
+3. Define the expected output format explicitly
+4. Add context that helps the AI understand the task better
+5. Use clear, unambiguous language
+6. Use markdown to seperate key sections in the prompt if applicable
+7. Include examples if appropriate
+8. Specify the tone and style requirements
+
+For changesMade, explain each enhancement you made and why it improves the prompt. Keep it to one sentence per enhancement, so that the end user may know in a single glance what improvements were made`;
+
+        userPrompt = `Create an optimized AI prompt based on these requirements:
+
+Task Description: ${task}
+
+Purpose/Context: ${purpose}
+
+Desired Output Format: ${outputFormat}
+
+Style & Tone: ${styleTone}
+
+Please create a well-structured, effective prompt and explain all the enhancements you made.`;
+
+      } else {
+        // Paste mode
+        if (!existingPrompt) {
+          return res.status(400).json({ message: "Existing prompt is required" });
+        }
+
+        systemPrompt = `You are an expert prompt engineer. Your task is to analyze and optimize existing AI prompts, then provide a detailed explanation of the improvements made.
+
+Return your response in the following JSON format:
+{
+  "optimizedPrompt": "the improved prompt text",
+  "changesMade": [
+    {
+      "type": "added" | "improved" | "structured" | "clarified" | "removed",
+      "description": "detailed explanation of what was changed and why"
+    }
+  ]
+}
+
+Guidelines for optimization:
+1. Improve clarity and specificity
+2. Add structure (sections, numbered steps) if needed
+3. Make instructions more explicit
+4. Remove ambiguity or redundancy
+5. Enhance context and constraints
+6. Specify output format more clearly
+7. Use markdown tags to seperate key sections in the prompt if applicable
+8. Add helpful examples if missing
+9. Improve tone/style consistency
+
+For changesMade, explain each enhancement you made and why it improves the prompt. Keep it to one sentence per enhancement, so that the end user may know in a single glance what improvements were made
+`;
+
+        userPrompt = `Analyze and optimize this existing prompt:
+
+${existingPrompt}
+
+Please provide an improved version and explain all the changes you made to enhance its effectiveness.`;
+      }
+
+      // Call OpenAI API
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+
+      const responseText = completion.choices[0]?.message?.content;
+      if (!responseText) {
+        throw new Error("No response from OpenAI");
+      }
+
+      const result = JSON.parse(responseText);
+
+      // Validate response structure
+      if (!result.optimizedPrompt || !result.changesMade) {
+        throw new Error("Invalid response format from OpenAI");
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error optimizing prompt:", error);
+      
+      // Handle specific OpenAI errors
+      if (error?.status === 401) {
+        return res.status(500).json({ message: "OpenAI API key is invalid" });
+      }
+      if (error?.status === 429) {
+        return res.status(429).json({ message: "Rate limit exceeded. Please try again later." });
+      }
+      
+      res.status(500).json({ 
+        message: error.message || "Failed to optimize prompt. Please try again." 
+      });
+    }
+  });
   
   // ============================================
   // Team Routes

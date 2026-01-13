@@ -12,6 +12,7 @@ import PromptDetail from "@/pages/prompt-detail";
 import TeamPage from "@/pages/team";
 import MyPrompts from "@/pages/my-prompts";
 import Contact from "@/pages/contact";
+import PromptCrafter from "@/pages/prompt-crafter";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/team" component={TeamPage} />
       <Route path="/my-prompts" component={MyPrompts} />
       <Route path="/contact" component={Contact} />
+      <Route path="/prompt-crafter" component={PromptCrafter} />
       <Route component={NotFound} />
     </Switch>
   );
