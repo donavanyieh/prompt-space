@@ -1,4 +1,5 @@
 # Prompt Space
+<img width="512" height="240" alt="image" src="https://github.com/user-attachments/assets/51d16a0a-70b6-4319-9914-5722e9d9a0ee" />
 
 A collaborative prompt management platform for teams to share, version, and organize AI prompts.
 
