@@ -14,6 +14,7 @@ Deployed on [promptspace.online](https://promptspace.online)
 - 🏷️ **Categorization** - Organize prompts by domain and task type
 - 🔍 **Search & Filter** - Find prompts quickly with advanced filtering
 - 📊 **Version History** - Track changes with automatic version control
+- 🪄 **AI Prompt Crafter** - Build optimized prompts from scratch or improve existing ones with AI-powered suggestions
 
 ## Tech Stack
 
@@ -21,6 +22,7 @@ Deployed on [promptspace.online](https://promptspace.online)
 - **Backend**: Express.js, Node.js
 - **Database**: PostgreSQL (Supabase)
 - **Authentication**: Google OAuth 2.0 (OpenID Connect)
+- **AI Services**: OpenAI API (for Prompt Crafter)
 - **ORM**: Drizzle ORM
 - **Build Tools**: Vite, esbuild
 
@@ -30,6 +32,7 @@ Deployed on [promptspace.online](https://promptspace.online)
 - npm or yarn
 - PostgreSQL database (or Supabase account)
 - Google OAuth credentials
+- OpenAI API key (for Prompt Crafter feature)
 
 ## Environment Setup
 
@@ -65,6 +68,9 @@ PORT=5000
 
 # Database
 DATABASE_URL=postgresql://user:password@host:port/database
+
+# OpenAI Configuration (for Prompt Crafter feature)
+OPENAI_API_KEY=your_openai_api_key
 ```
 
 **⚠️ Security Note**: Never commit your `.env` file to version control. The `.env` file is already included in `.gitignore`.
@@ -78,7 +84,17 @@ DATABASE_URL=postgresql://user:password@host:port/database
 5. Add authorized redirect URI: `http://localhost:5000/api/callback`
 6. Copy the Client ID and Client Secret to your `.env` file
 
-### 5. Set Up Database
+### 5. Set Up OpenAI API Key (for Prompt Crafter)
+
+1. Go to [OpenAI Platform](https://platform.openai.com/)
+2. Create an account or sign in
+3. Navigate to the API Keys section
+4. Generate a new API key
+5. Copy the API key to your `.env` file as `OPENAI_API_KEY`
+
+**Note**: The Prompt Crafter feature requires an OpenAI API key to function. Without it, the core prompt management features will still work, but the AI-powered prompt optimization will not be available.
+
+### 6. Set Up Database
 
 Push the database schema using Drizzle:
 
