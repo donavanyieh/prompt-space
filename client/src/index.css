@@ -389,4 +389,370 @@
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
   }
+
+  /* ============================================
+   * FEATURE CARD GRADIENTS & 3D SHAPES
+   * ============================================ */
+
+  /* Feature card gradient backgrounds */
+  .feature-card-blue {
+    background: linear-gradient(135deg, hsl(218 95% 65%) 0%, hsl(218 90% 55%) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card-lime {
+    background: linear-gradient(135deg, hsl(75 85% 75%) 0%, hsl(75 75% 65%) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card-coral {
+    background: linear-gradient(135deg, hsl(25 75% 75%) 0%, hsl(25 65% 65%) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card-purple {
+    background: linear-gradient(135deg, hsl(280 45% 35%) 0%, hsl(280 40% 25%) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card-cyan {
+    background: linear-gradient(135deg, hsl(192 85% 70%) 0%, hsl(192 75% 60%) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card-plum {
+    background: linear-gradient(135deg, hsl(320 40% 40%) 0%, hsl(320 35% 30%) 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* 3D Geometric Shapes */
+  .shape-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Circles/Bubbles for blue card */
+  .shape-circles {
+    position: relative;
+    width: 140px;
+    height: 140px;
+  }
+
+  .shape-circles::before {
+    content: '';
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  .shape-circles::after {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 50%;
+    top: 20%;
+    left: 20%;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  .shape-circles .circle-1 {
+    position: absolute;
+    width: 35px;
+    height: 35px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    top: 30%;
+    right: 15%;
+  }
+
+  .shape-circles .circle-2 {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    bottom: 20%;
+    left: 25%;
+  }
+
+  .shape-circles .circle-3 {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    bottom: 30%;
+    right: 20%;
+  }
+
+  /* Diamond/Isometric shape for lime card */
+  .shape-diamond {
+    position: relative;
+    width: 140px;
+    height: 140px;
+  }
+
+  .shape-diamond::before {
+    content: '';
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, rgba(100, 120, 50, 0.6) 0%, rgba(80, 100, 40, 0.8) 100%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  }
+
+  .shape-diamond::after {
+    content: '';
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, rgba(120, 140, 60, 0.4) 0%, rgba(100, 120, 50, 0.6) 100%);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    border-radius: 6px;
+  }
+
+  /* Hexagon for coral card */
+  .shape-hexagon {
+    position: relative;
+    width: 100px;
+    height: 110px;
+    margin: 20px auto;
+  }
+
+  .shape-hexagon::before {
+    content: '';
+    position: absolute;
+    width: 100px;
+    height: 58px;
+    background: rgba(80, 40, 50, 0.7);
+    top: 26px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  }
+
+  .shape-hexagon::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 50px solid transparent;
+    border-right: 50px solid transparent;
+    border-bottom: 26px solid rgba(80, 40, 50, 0.7);
+    top: 0;
+  }
+
+  .shape-hexagon .hex-bottom {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 50px solid transparent;
+    border-right: 50px solid transparent;
+    border-top: 26px solid rgba(80, 40, 50, 0.7);
+    bottom: 0;
+  }
+
+  /* Concentric circles for purple card */
+  .shape-concentric {
+    position: relative;
+    width: 140px;
+    height: 140px;
+  }
+
+  .shape-concentric::before {
+    content: '';
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    background: transparent;
+    border: 12px solid rgba(200, 190, 140, 0.4);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .shape-concentric::after {
+    content: '';
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background: transparent;
+    border: 10px solid rgba(200, 190, 140, 0.6);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .shape-concentric .inner-circle {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background: rgba(200, 190, 140, 0.9);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 20px rgba(200, 190, 140, 0.5);
+  }
+
+  /* Sparkle/Star shape for cyan card */
+  .shape-sparkle {
+    position: relative;
+    width: 140px;
+    height: 140px;
+  }
+
+  .shape-sparkle::before {
+    content: '';
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    background: rgba(255, 255, 255, 0.4);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .shape-sparkle::after {
+    content: '';
+    position: absolute;
+    width: 70px;
+    height: 70px;
+    background: rgba(255, 255, 255, 0.3);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .shape-sparkle .sparkle-dot {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    top: 15%;
+    right: 15%;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.8);
+  }
+
+  /* Shield/Lock shape for plum card */
+  .shape-shield {
+    position: relative;
+    width: 90px;
+    height: 110px;
+    margin: 20px auto;
+  }
+
+  .shape-shield::before {
+    content: '';
+    position: absolute;
+    width: 90px;
+    height: 90px;
+    background: linear-gradient(135deg, rgba(255, 180, 230, 0.4) 0%, rgba(230, 150, 200, 0.6) 100%);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+
+  .shape-shield::after {
+    content: '';
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 200, 240, 0.3);
+    border-radius: 8px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Lock shape for plum card */
+  .shape-lock {
+    position: relative;
+    width: 90px;
+    height: 110px;
+    margin: 20px auto;
+  }
+
+  /* Lock body (rectangle) */
+  .shape-lock::before {
+    content: '';
+    position: absolute;
+    width: 70px;
+    height: 55px;
+    background: linear-gradient(135deg, rgba(255, 180, 230, 0.5) 0%, rgba(230, 150, 200, 0.7) 100%);
+    border-radius: 8px;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Lock shackle (semi-circle) */
+  .shape-lock::after {
+    content: '';
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    background: transparent;
+    border: 10px solid rgba(255, 180, 230, 0.6);
+    border-radius: 50% 50% 0 0;
+    border-bottom: none;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Dark mode adjustments for feature cards */
+  .dark .feature-card-blue {
+    background: linear-gradient(135deg, hsl(218 85% 50%) 0%, hsl(218 75% 40%) 100%);
+  }
+
+  .dark .feature-card-lime {
+    background: linear-gradient(135deg, hsl(75 70% 60%) 0%, hsl(75 60% 50%) 100%);
+  }
+
+  .dark .feature-card-coral {
+    background: linear-gradient(135deg, hsl(25 65% 60%) 0%, hsl(25 55% 50%) 100%);
+  }
+
+  .dark .feature-card-purple {
+    background: linear-gradient(135deg, hsl(280 35% 25%) 0%, hsl(280 30% 18%) 100%);
+  }
+
+  .dark .feature-card-cyan {
+    background: linear-gradient(135deg, hsl(192 75% 55%) 0%, hsl(192 65% 45%) 100%);
+  }
+
+  .dark .feature-card-plum {
+    background: linear-gradient(135deg, hsl(320 35% 30%) 0%, hsl(320 30% 22%) 100%);
+  }
 }
